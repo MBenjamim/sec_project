@@ -1,4 +1,4 @@
-package utils.RSA;
+package utils;
 
 import javax.crypto.spec.SecretKeySpec;
 
