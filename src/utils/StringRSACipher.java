@@ -25,7 +25,7 @@ public class StringRSACipher {
         final int opmode = Cipher.ENCRYPT_MODE;
 
         try{
-            Key pubkey = RSAKeyGenerator.read(keyFile, "pub");
+            Key pubkey = RSAKeyGenerator.read(keyFile, "priv");
             Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             System.out.println(cipher.getProvider().getInfo());
 
