@@ -1,3 +1,5 @@
+#!/bin/bash
+
 source config.cfg
 
 if [ -z "$NUM_SERVERS" ] || [ -z "$BASE_PORT" ]; then
@@ -5,19 +7,24 @@ if [ -z "$NUM_SERVERS" ] || [ -z "$BASE_PORT" ]; then
     exit 1
 fi
 
-javac -d out src/*.java
+# Build the project using Maven
+mvn clean compile
+if [ $? -ne 0 ]; then
+    echo "Maven build failed!"
+    exit 1
+fi
 
-# Start tmux session
-tmux new-session -d -s blockchain_network -n server_0 "java -cp out BlockchainNetworkServer $BASE_PORT"
+# Start the first server in a new tmux session
+tmux new-session -d -s blockchain_network -n server_0 "mvn exec:java -Dexec.mainClass=BlockchainNetworkServer -Dexec.args=\"0 $BASE_PORT\""
 if [ $? -ne 0 ]; then
     echo "Failed to create tmux session."
     exit 1
 fi
 
-# Start multiple servers in tmux windows
+# Start additional servers in separate tmux windows
 for ((i=1; i<$NUM_SERVERS; i++)); do
     PORT=$((BASE_PORT + i))
-    tmux new-window -n server_$i "java -cp out BlockchainNetworkServer $PORT"
+    tmux new-window -n server_$i "mvn exec:java -Dexec.mainClass=BlockchainNetworkServer -Dexec.args=\"$i $PORT\""
     sleep 1
 done
 
