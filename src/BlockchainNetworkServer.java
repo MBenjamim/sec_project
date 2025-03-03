@@ -3,8 +3,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class BlockchainNetworkServer {
-    private int serverId;
-    private int serverPort;
+    private final int serverId;
+    private final int serverPort;
 
     public BlockchainNetworkServer(int serverId, int serverPort) {
         this.serverId = serverId;

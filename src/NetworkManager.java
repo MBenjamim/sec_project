@@ -1,14 +1,25 @@
+import lombok.Getter;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
+@Getter
 public class NetworkManager {
     private final Map<Integer, Node> networkNodes = new HashMap<>();
 
     private static final String CONFIG_FILE = "config.cfg";
-    private int serverId;
-    private int sentMessages = -1; 
+    private final int id;
+    private long sentMessages = -1;
+    private final KeyManager km;
+
+    public NetworkManager(int port, int serverId) {
+        this.id = serverId;
+        this.km = new KeyManager(this);
+        loadNodesFromConfig();
+        startListeningForUDP(port);
+        initiateBlockchainNetwork(port);
+    }
 
     public void loadNodesFromConfig() {
         Properties config = new Properties();
@@ -33,30 +44,32 @@ public class NetworkManager {
     }
 
     public void initiateBlockchainNetwork(int port) {
-        int messageId = generateMessageId();
-        try (DatagramSocket udpSocket = new DatagramSocket()) {
-            for (Node node : networkNodes.values()) {
-                if(node.getPort() == port) 
-                    continue;
-                Message message = new Message(messageId, "CONNECT", serverId,"");
-                System.out.println("Sending CONNECT message to " + node.getIp() + ":" + node.getPort());
-                sendAndAcknowledgeMessageThread(message, node);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        long messageId = generateMessageId();
+        for (Node node : networkNodes.values()) {
+            if(node.getPort() == port)
+                continue;
+            sendAndAcknowledgeMessageThread(messageId, node);
         }
     }
 
     public void startListeningForUDP(int port) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
-                byte[] buffer = new byte[1024];
+                int bufferSize = 1024;
+                byte[] buffer = new byte[bufferSize];
     
                 System.out.println("Listening for UDP messages on port " + port + "...");
     
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     udpSocket.receive(packet);
+
+                    if (packet.getLength() > bufferSize) {
+                        bufferSize = packet.getLength();
+                        buffer = new byte[bufferSize];
+                        packet.setData(buffer);
+                        udpSocket.receive(packet);
+                    }
 
                     Message receivedMessage = Message.fromJson(new String(packet.getData(), 0, packet.getLength()));
                     
@@ -71,66 +84,65 @@ public class NetworkManager {
         }).start();
     }
 
-    public void sendAndAcknowledgeMessageThread(Message message, Node node) {
-        new Thread(() -> sendAndAcknowledgeMessage(message, node)).start();
+    public void sendAndAcknowledgeMessageThread(long messageId, Node node) {
+        new Thread(() -> {
+            Message message = new Message(messageId, "CONNECT", id);
+            System.out.println("Sending CONNECT message to " + node.getIp() + ":" + node.getPort());
+            sendAndAcknowledgeMessage(message, node);
+        }).start();
     }
 
     public void sendAndAcknowledgeMessage(Message message, Node node) {
         int relay = 0;
-        node.addSentMessage(relay, message);
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());
-            byte[] messageBytes = message.toJson().getBytes();
-            
+            byte[] messageBytes = km.signMessage(message, node);
+
             DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
             node.addSentMessage(message.getId(), message);
 
-            do{
+            do {
                 udpSocket.send(packet);
                 System.out.println("Sent blockchain network message to " + node.getIp() + ":" + node.getPort());
                 System.out.println("Message: " + message);
 
                 try {
-                    Thread.sleep(200*relay);
-                }catch (InterruptedException e) {
+                    Thread.sleep(200L * relay);
+                } catch (InterruptedException e) {
                     System.out.println("Wait interrupted: " + e.getMessage());
                     Thread.currentThread().interrupt();
                 }
                 relay++;
-            } while (!message.isReceived()); 
+            } while (!message.isReceived());
 
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("Failed to sign message:");
+            e.printStackTrace();
         }
-    }
-
-
-    public NetworkManager(int port, int serverId){
-        this.serverId = serverId;
-        loadNodesFromConfig();
-        startListeningForUDP(port);    
-        initiateBlockchainNetwork(port);
     }
 
     public void processMessage(Message message) {
         System.out.println("Processing message: " + message);
         Node sender = networkNodes.get(message.getSender());
+        try {
+            if (sender == null || !km.verifyMessage(message, sender)) {
+                System.err.println("Invalid message: " + message);
+                return;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
         switch (message.getType()) {
             case "CONNECT":
-                if (sender != null) {
-                    sender.addReceivedMessage(message.getId(), message);
-                    sendMessage(new Message(message.getId(), "ACK", serverId), sender);
-                } else {
-                    System.out.println("Sender node not found for CONNECT message.");
-                }
+                sender.addReceivedMessage(message.getId(), message);
+                sendMessage(new Message(message.getId(), "ACK", id), sender);
                 break;
             case "ACK":
-                if (sender != null) {
-                    sender.addReceivedMessage(message.getId(), message);
-                    sender.ackMessage(message.getId());
-                } else {
-                    System.out.println("Sender node not found for ACK message.");
-                }
+                sender.addReceivedMessage(message.getId(), message);
+                sender.ackMessage(message.getId());
                 break;
             default:
                 System.out.println("Unknown message type: " + message.getType());
@@ -140,24 +152,27 @@ public class NetworkManager {
 
     public void sendMessage(Message message, Node node) {
         try (DatagramSocket udpSocket = new DatagramSocket()) {
-            byte[] messageJson = message.toJson().getBytes();
+            byte[] messageBytes = km.signMessage(message, node);
 
             InetAddress address = InetAddress.getByName(node.getIp());
-            DatagramPacket packet = new DatagramPacket(messageJson, messageJson.length, address, node.getPort());
+            DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
             udpSocket.send(packet);
 
             System.out.println("Sent message: " + message.getType() + " to: "+ node.getIp() + ":" + node.getPort());
 
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("Failed to sign message:");
+            e.printStackTrace();
         }
     }
 
     public List<Node> getNetworkNodes() {
-        return this.networkNodes.values().stream().collect(Collectors.toList());
+        return new ArrayList<>(this.networkNodes.values());
     }
 
-    public int generateMessageId(){
+    public long generateMessageId(){
         return sentMessages++;
     }
 }

@@ -1,18 +1,6 @@
 #!/bin/bash
 
-source config.cfg
-
-if [ -z "$NUM_SERVERS" ] || [ -z "$BASE_PORT" ]; then
-    echo "Configuration values (NUM_SERVERS or BASE_PORT) not set properly in config.cfg"
-    exit 1
-fi
-
-# Build the project using Maven
-mvn clean compile
-if [ $? -ne 0 ]; then
-    echo "Maven build failed!"
-    exit 1
-fi
+source load_config_and_compile.sh
 
 # Start the first server in a new tmux session
 tmux new-session -d -s blockchain_network -n server_0 "mvn exec:java -Dexec.mainClass=BlockchainNetworkServer -Dexec.args=\"0 $BASE_PORT\""
