@@ -48,7 +48,7 @@ public class NetworkManager {
         for (Node node : networkNodes.values()) {
             if(node.getPort() == port)
                 continue;
-            sendAndAcknowledgeMessageThread(messageId, node);
+            sendConnectMessage(messageId, node);
         }
     }
 
@@ -84,9 +84,13 @@ public class NetworkManager {
         }).start();
     }
 
-    public void sendAndAcknowledgeMessageThread(long messageId, Node node) {
+    public void sendConnectMessage(long messageId, Node node) {
+        Message connectMessage = new Message(messageId, "CONNECT", id);
+        sendAndAcknowledgeMessageThread(connectMessage, node);
+    }
+
+    public void sendAndAcknowledgeMessageThread(Message message, Node node) {
         new Thread(() -> {
-            Message message = new Message(messageId, "CONNECT", id);
             System.out.println("Sending CONNECT message to " + node.getIp() + ":" + node.getPort());
             sendAndAcknowledgeMessage(message, node);
         }).start();
