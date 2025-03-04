@@ -10,6 +10,9 @@ import lombok.ToString;
 
 import java.util.Base64;
 
+/**
+ * Represents a message in the blockchain network.
+ */
 @Getter
 @Setter
 @ToString
@@ -26,6 +29,13 @@ public class Message {
     @ToString.Exclude
     private byte[] signature;
 
+    /**
+     * Constructor for the Message class.
+     *
+     * @param id      the unique identifier for the message
+     * @param type    the type of the message
+     * @param sender  the unique identifier for the sender
+     */
     public Message(long id, String type, int sender) {
         this.id = id;
         this.type = type;
@@ -34,16 +44,34 @@ public class Message {
         this.content = "";
     }
 
+    /**
+     * Constructor for the Message class with content.
+     *
+     * @param id      the unique identifier for the message
+     * @param type    the type of the message
+     * @param sender  the unique identifier for the sender
+     * @param content the content of the message
+     */
     public Message(long id, String type, int sender, String content) {
         this(id, type, sender);
         this.content = content;
     }
 
+    /**
+     * Retrieves the properties of the message to be signed.
+     *
+     * @return a string representation of the properties to be signed
+     */
     @JsonIgnore
     public String getPropertiesToSign() {
         return id + "," + type + "," + content;
     }
-    
+
+    /**
+     * Converts the message to a JSON string.
+     *
+     * @return the JSON string representation of the message
+     */
     public String toJson() {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -52,8 +80,14 @@ public class Message {
             e.printStackTrace();
             return null;
         }
-    }   
+    }
 
+    /**
+     * Creates a Message object from a JSON string.
+     *
+     * @param json the JSON string representation of the message
+     * @return the Message object
+     */
     public static Message fromJson(String json) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -64,12 +98,22 @@ public class Message {
         }
     }
 
-    @JsonProperty("signature") // Serialize as Base64 string
+    /**
+     * Retrieves the signature as a Base64 encoded string.
+     *
+     * @return the Base64 encoded string representation of the signature
+     */
+    @JsonProperty("signature")
     public String getSignatureBase64() {
         return Base64.getEncoder().encodeToString(signature);
     }
 
-    @JsonProperty("signature") // Deserialize from Base64 string
+    /**
+     * Sets the signature from a Base64 encoded string.
+     *
+     * @param signatureBase64 the Base64 encoded string representation of the signature
+     */
+    @JsonProperty("signature")
     public void setSignatureBase64(String signatureBase64) {
         this.signature = Base64.getDecoder().decode(signatureBase64);
     }

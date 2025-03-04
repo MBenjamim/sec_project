@@ -17,6 +17,13 @@ public class Node {
     Map<Long, Message> sentMessages = new HashMap<>();
     Map<Long, Message> receivedMessages = new HashMap<>();
 
+    /**
+     * Constructor for the Node class.
+     *
+     * @param id    the unique identifier for the node
+     * @param ip    the IP address of the node
+     * @param port  the port number of the node
+     */
     public Node(int id, String ip, int port) {
         this.id = id;
         this.ip = ip;
@@ -24,6 +31,12 @@ public class Node {
         this.publicKey = null;
     }
 
+    /**
+     * Retrieves the public key for the node.
+     *
+     * @param dir the directory where the public key file is located
+     * @return the public key of the node
+     */
     public PublicKey getPublicKey(String dir) {
         try {
             if (publicKey == null) {
@@ -35,14 +48,31 @@ public class Node {
         return publicKey;
     }
 
+    /**
+     * Adds a sent message to the sentMessages map.
+     *
+     * @param id      the unique identifier for the message
+     * @param message the message to be added
+     */
     public void addSentMessage(long id, Message message) {
         sentMessages.put(id, message);
     }
 
+     /**
+     * Adds a received message to the receivedMessages map.
+     *
+     * @param id      the unique identifier for the message
+     * @param message the message to be added
+     */
     public void addReceivedMessage(long id, Message message) {
         receivedMessages.putIfAbsent(id, message);
     }
 
+    /**
+     * Acknowledges a message by setting its received status to true.
+     *
+     * @param id the unique identifier for the message
+     */
     public void ackMessage(long id){
         sentMessages.get(id).setReceived(true);
     }

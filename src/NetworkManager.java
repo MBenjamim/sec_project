@@ -4,6 +4,9 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+/**
+ * Manages the network of nodes in the blockchain network.
+ */
 @Getter
 public class NetworkManager {
     private final Map<Integer, Node> networkNodes = new HashMap<>();
@@ -13,6 +16,12 @@ public class NetworkManager {
     private long sentMessages = -1;
     private final KeyManager km;
 
+    /**
+     * Constructor for the NetworkManager class.
+     *
+     * @param port     the port number for the server
+     * @param serverId the unique identifier for the server
+     */
     public NetworkManager(int port, int serverId) {
         this.id = serverId;
         this.km = new KeyManager(this);
@@ -21,6 +30,9 @@ public class NetworkManager {
         initiateBlockchainNetwork(port);
     }
 
+    /**
+     * Loads the nodes from the configuration file.
+     */
     public void loadNodesFromConfig() {
         Properties config = new Properties();
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
@@ -43,23 +55,33 @@ public class NetworkManager {
         networkNodes.values().forEach(node -> System.out.println(node.getId() + ": " + node.getIp() + ":" + node.getPort()));
     }
 
+    /**
+     * Initiates the blockchain network by sending connect messages to other nodes.
+     *
+     * @param port the port number for the server
+     */
     public void initiateBlockchainNetwork(int port) {
         long messageId = generateMessageId();
         for (Node node : networkNodes.values()) {
-            if(node.getPort() == port)
+            if (node.getPort() == port)
                 continue;
             sendConnectMessage(messageId, node);
         }
     }
 
+    /**
+     * Starts listening for UDP messages on the specified port.
+     *
+     * @param port the port number to listen on
+     */
     public void startListeningForUDP(int port) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
                 int bufferSize = 1024;
                 byte[] buffer = new byte[bufferSize];
-    
+
                 System.out.println("Listening for UDP messages on port " + port + "...");
-    
+
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     udpSocket.receive(packet);
@@ -72,7 +94,7 @@ public class NetworkManager {
                     }
 
                     Message receivedMessage = Message.fromJson(new String(packet.getData(), 0, packet.getLength()));
-                    
+
                     if (receivedMessage != null) {
                         processMessage(receivedMessage);
                         System.out.println("Received UDP message on port " + port + ": " + receivedMessage);
@@ -84,11 +106,23 @@ public class NetworkManager {
         }).start();
     }
 
+    /**
+     * Sends a connect message to the specified node.
+     *
+     * @param messageId the unique identifier for the message
+     * @param node      the node to send the message to
+     */
     public void sendConnectMessage(long messageId, Node node) {
         Message connectMessage = new Message(messageId, "CONNECT", id);
         sendAndAcknowledgeMessageThread(connectMessage, node);
     }
 
+    /**
+     * Sends a message and waits for an acknowledgment in a separate thread.
+     *
+     * @param message the message to send
+     * @param node    the node to send the message to
+     */
     public void sendAndAcknowledgeMessageThread(Message message, Node node) {
         new Thread(() -> {
             System.out.println("Sending CONNECT message to " + node.getIp() + ":" + node.getPort());
@@ -96,6 +130,12 @@ public class NetworkManager {
         }).start();
     }
 
+    /**
+     * Sends a message and waits for an acknowledgment.
+     *
+     * @param message the message to send
+     * @param node    the node to send the message to
+     */
     public void sendAndAcknowledgeMessage(Message message, Node node) {
         int relay = 0;
         try (DatagramSocket udpSocket = new DatagramSocket()) {
@@ -127,6 +167,11 @@ public class NetworkManager {
         }
     }
 
+    /**
+     * Processes a received message.
+     *
+     * @param message the message to process
+     */
     public void processMessage(Message message) {
         System.out.println("Processing message: " + message);
         Node sender = networkNodes.get(message.getSender());
@@ -154,6 +199,12 @@ public class NetworkManager {
         }
     }
 
+    /**
+     * Sends a message to the specified node.
+     *
+     * @param message the message to send
+     * @param node    the node to send the message to
+     */
     public void sendMessage(Message message, Node node) {
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             byte[] messageBytes = km.signMessage(message, node);
@@ -162,7 +213,7 @@ public class NetworkManager {
             DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
             udpSocket.send(packet);
 
-            System.out.println("Sent message: " + message.getType() + " to: "+ node.getIp() + ":" + node.getPort());
+            System.out.println("Sent message: " + message.getType() + " to: " + node.getIp() + ":" + node.getPort());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -172,11 +223,21 @@ public class NetworkManager {
         }
     }
 
+    /**
+     * Retrieves the list of network nodes.
+     *
+     * @return the list of network nodes
+     */
     public List<Node> getNetworkNodes() {
         return new ArrayList<>(this.networkNodes.values());
     }
 
-    public long generateMessageId(){
+    /**
+     * Generates a unique message ID.
+     *
+     * @return the generated message ID
+     */
+    public long generateMessageId() {
         return sentMessages++;
     }
 }

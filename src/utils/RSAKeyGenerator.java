@@ -4,11 +4,20 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.*;
 
+/**
+ * Utility class for generating RSA key pairs and saving them to files.
+ */
 public class RSAKeyGenerator {
 
     private static final String ALGORITHM = "RSA";
     private static final int KEY_SIZE = 4096;
 
+    /**
+     * Main method for generating and saving RSA key pairs.
+     *
+     * @param args command line arguments (private key file path and public key file path)
+     * @throws Exception if an error occurs while generating or saving the keys
+     */
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
             System.err.println("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
@@ -24,6 +33,12 @@ public class RSAKeyGenerator {
         System.out.println("Done.");
     }
 
+    /**
+     * Generates an RSA key pair.
+     *
+     * @return the generated RSA key pair
+     * @throws NoSuchAlgorithmException if the RSA algorithm is not available
+     */
     public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
         System.out.println("Generating " + ALGORITHM + " key ..." );
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
@@ -33,6 +48,14 @@ public class RSAKeyGenerator {
         return keys;
     }
 
+    /**
+     * Saves the RSA key pair to files.
+     *
+     * @param privKeyPath the path to the private key file
+     * @param pubKeyPath  the path to the public key file
+     * @param keys        the RSA key pair to save
+     * @throws IOException if an I/O error occurs
+     */
     public static void saveKeys(String privKeyPath, String pubKeyPath, KeyPair keys) throws IOException {
         byte[] privKey = keys.getPrivate().getEncoded();
         byte[] pubKey = keys.getPublic().getEncoded();
@@ -46,5 +69,4 @@ public class RSAKeyGenerator {
             pubFos.write(pubKey);
         }
     }
-
 }
