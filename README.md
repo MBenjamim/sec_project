@@ -1,6 +1,21 @@
-# Blockchain Network Project
+# SEC Project
 
-This project implements a blockchain network with multiple servers. Each server can generate and manage cryptographic keys, handle client connections, and communicate with other servers in the network.
+This is a project for the Highly Dependable Systems course at Instituto Superior Técnico in Lisbon.
+>This project aims to develop a simplified permissioned (closed membership) 
+blockchain  system  with  high  dependability  guarantees,  called  Dependable 
+Chain (DepChain). The system will be built iteratively throughout the first and 
+second stages of the project: the first stage focuses on the consensus layer 
+while the second stage will target the transaction processing layer.
+
+## Current Stage
+**Consensus Layer (Stage 1)**
+
+## Participants
+| Name              |   IST Number   |
+|-------------------|----------------|
+| Diogo Ribeiro     |     102484     |
+| João Mestre       |     102779     |
+| Miguel Benjamim   |     103560     |
 
 ## Prerequisites
 
