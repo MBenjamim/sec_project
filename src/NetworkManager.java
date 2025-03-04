@@ -13,7 +13,7 @@ public class NetworkManager {
 
     private static final String CONFIG_FILE = "config.cfg";
     private final int id;
-    private long sentMessages = -1;
+    private long sentMessages = 0;
     private final KeyManager km;
 
     /**
@@ -65,7 +65,7 @@ public class NetworkManager {
         for (Node node : networkNodes.values()) {
             if (node.getPort() == port)
                 continue;
-            sendConnectMessage(messageId, node);
+            sendMessageThread(new Message(messageId, "CONNECT", id), node);
         }
     }
 
@@ -77,27 +77,13 @@ public class NetworkManager {
     public void startListeningForUDP(int port) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
-                int bufferSize = 1024;
-                byte[] buffer = new byte[bufferSize];
-
                 System.out.println("Listening for UDP messages on port " + port + "...");
 
                 while (true) {
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    udpSocket.receive(packet);
-
-                    if (packet.getLength() > bufferSize) {
-                        bufferSize = packet.getLength();
-                        buffer = new byte[bufferSize];
-                        packet.setData(buffer);
-                        udpSocket.receive(packet);
-                    }
-
-                    Message receivedMessage = Message.fromJson(new String(packet.getData(), 0, packet.getLength()));
+                    Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
 
                     if (receivedMessage != null) {
-                        processMessage(receivedMessage);
-                        System.out.println("Received UDP message on port " + port + ": " + receivedMessage);
+                        parseReceivedMessage(receivedMessage);
                     }
                 }
             } catch (IOException e) {
@@ -107,64 +93,34 @@ public class NetworkManager {
     }
 
     /**
-     * Sends a connect message to the specified node.
+     * Parses and processes a received message in a separate thread.
+     * Verifies the message (authenticated reliable link) before processing it.
+     * Only processes messages from other nodes in a separate thread (for now).
      *
-     * @param messageId the unique identifier for the message
-     * @param node      the node to send the message to
+     * @param message the received message
      */
-    public void sendConnectMessage(long messageId, Node node) {
-        Message connectMessage = new Message(messageId, "CONNECT", id);
-        sendAndAcknowledgeMessageThread(connectMessage, node);
-    }
-
-    /**
-     * Sends a message and waits for an acknowledgment in a separate thread.
-     *
-     * @param message the message to send
-     * @param node    the node to send the message to
-     */
-    public void sendAndAcknowledgeMessageThread(Message message, Node node) {
+    public void parseReceivedMessage(Message message) {
         new Thread(() -> {
-            System.out.println("Sending CONNECT message to " + node.getIp() + ":" + node.getPort());
-            sendAndAcknowledgeMessage(message, node);
+            Node sender = networkNodes.get(message.getSender());
+            if (!ReliableLink.verifyMessage(message, sender, km)) {
+                return;
+            }
+            processMessage(message, sender);
         }).start();
     }
 
     /**
-     * Sends a message and waits for an acknowledgment.
+     * Sends a message using authenticated reliable links abstraction
+     * in a separate thread.
      *
      * @param message the message to send
      * @param node    the node to send the message to
      */
-    public void sendAndAcknowledgeMessage(Message message, Node node) {
-        int relay = 0;
-        try (DatagramSocket udpSocket = new DatagramSocket()) {
-            InetAddress address = InetAddress.getByName(node.getIp());
-            byte[] messageBytes = km.signMessage(message, node);
-
-            DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
-            node.addSentMessage(message.getId(), message);
-
-            do {
-                udpSocket.send(packet);
-                System.out.println("Sent blockchain network message to " + node.getIp() + ":" + node.getPort());
-                System.out.println("Message: " + message);
-
-                try {
-                    Thread.sleep(200L * relay);
-                } catch (InterruptedException e) {
-                    System.out.println("Wait interrupted: " + e.getMessage());
-                    Thread.currentThread().interrupt();
-                }
-                relay++;
-            } while (!message.isReceived());
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.err.println("Failed to sign message:");
-            e.printStackTrace();
-        }
+    public void sendMessageThread(Message message, Node node) {
+        new Thread(() -> {
+            System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
+            ReliableLink.sendMessage(message, node, km);
+        }).start();
     }
 
     /**
@@ -172,22 +128,12 @@ public class NetworkManager {
      *
      * @param message the message to process
      */
-    public void processMessage(Message message) {
+    public void processMessage(Message message, Node sender) {
         System.out.println("Processing message: " + message);
-        Node sender = networkNodes.get(message.getSender());
-        try {
-            if (sender == null || !km.verifyMessage(message, sender)) {
-                System.err.println("Invalid message: " + message);
-                return;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
         switch (message.getType()) {
             case "CONNECT":
                 sender.addReceivedMessage(message.getId(), message);
-                sendMessage(new Message(message.getId(), "ACK", id), sender);
+                sendMessageThread(new Message(message.getId(), "ACK", id), sender);
                 break;
             case "ACK":
                 sender.addReceivedMessage(message.getId(), message);
@@ -196,30 +142,6 @@ public class NetworkManager {
             default:
                 System.out.println("Unknown message type: " + message.getType());
                 break;
-        }
-    }
-
-    /**
-     * Sends a message to the specified node.
-     *
-     * @param message the message to send
-     * @param node    the node to send the message to
-     */
-    public void sendMessage(Message message, Node node) {
-        try (DatagramSocket udpSocket = new DatagramSocket()) {
-            byte[] messageBytes = km.signMessage(message, node);
-
-            InetAddress address = InetAddress.getByName(node.getIp());
-            DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
-            udpSocket.send(packet);
-
-            System.out.println("Sent message: " + message.getType() + " to: " + node.getIp() + ":" + node.getPort());
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.err.println("Failed to sign message:");
-            e.printStackTrace();
         }
     }
 

@@ -37,7 +37,7 @@ public class Node {
      * @param dir the directory where the public key file is located
      * @return the public key of the node
      */
-    public PublicKey getPublicKey(String dir) {
+    synchronized public PublicKey getPublicKey(String dir) {
         try {
             if (publicKey == null) {
                 this.publicKey = RSAKeyReader.readPublicKey(dir + "server" + id + "_public.key");
@@ -54,7 +54,7 @@ public class Node {
      * @param id      the unique identifier for the message
      * @param message the message to be added
      */
-    public void addSentMessage(long id, Message message) {
+    synchronized public void addSentMessage(long id, Message message) {
         sentMessages.put(id, message);
     }
 
@@ -64,7 +64,7 @@ public class Node {
      * @param id      the unique identifier for the message
      * @param message the message to be added
      */
-    public void addReceivedMessage(long id, Message message) {
+    synchronized public void addReceivedMessage(long id, Message message) {
         receivedMessages.putIfAbsent(id, message);
     }
 
@@ -73,7 +73,16 @@ public class Node {
      *
      * @param id the unique identifier for the message
      */
-    public void ackMessage(long id){
+    synchronized public void ackMessage(long id) {
         sentMessages.get(id).setReceived(true);
+    }
+
+    /**
+     * Check if message was acknowledged by verifying received status
+     *
+     * @param id the unique identifier for the message
+     */
+    synchronized public boolean checkAckedMessage(long id) {
+        return sentMessages.get(id).isReceived();
     }
 }
