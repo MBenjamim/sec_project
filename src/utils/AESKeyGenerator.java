@@ -54,16 +54,16 @@ public class AESKeyGenerator {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(128);
         Key key = keyGen.generateKey();
-        System.out.println("Finish generating AES key");
+        System.out.println( "Finish generating AES key" );
         byte[] encoded = key.getEncoded();
         System.out.println("Key:");
         System.out.println(DataUtils.bytesToHex(encoded));
 
         System.out.println("Writing key to '" + keyPath + "' ...");
 
-        FileOutputStream fos = new FileOutputStream(keyPath);
-        fos.write(encoded);
-        fos.close();
+        try (FileOutputStream fos = new FileOutputStream(keyPath)) {
+            fos.write(encoded);
+        }
     }
 
     /**
@@ -76,10 +76,11 @@ public class AESKeyGenerator {
      */
     public static Key read(String keyPath) throws GeneralSecurityException, IOException {
         System.out.println("Reading key from file " + keyPath + " ...");
-        FileInputStream fis = new FileInputStream(keyPath);
-        byte[] encoded = new byte[fis.available()];
-        fis.read(encoded);
-        fis.close();
+        byte[] encoded;
+        try (FileInputStream fis = new FileInputStream(keyPath)) {
+            encoded = new byte[fis.available()];
+            fis.read(encoded);
+        }
 
         return new SecretKeySpec(encoded, 0, 16, "AES");
     }
