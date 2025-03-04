@@ -65,8 +65,8 @@ public class RSAKeyReader {
      * @throws NoSuchAlgorithmException if the RSA algorithm is not available
      * @throws InvalidKeySpecException if the key specification is invalid
      */
-    public static PublicKey readPublicKey(String privKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] encoded = readKey(privKeyPath);
+    public static PublicKey readPublicKey(String pubKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+        byte[] encoded = readKey(pubKeyPath);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
         return keyFactory.generatePublic(keySpec);
