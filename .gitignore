@@ -1,8 +1,26 @@
+# Ignore directories storing key infrastructure
+server*/
+
 # Compiled Java class files
 *.class
 
 # Build directories
 out/
+target/
+
+# Ignore IDE directories and files
+.vscode/
+.idea/
+.project
+.classpath
+.settings/
+nbproject/
+DerivedData/
+.gradle/
+build/
+*.iml
+*.sublime-workspace
+*.sublime-project
 
 #mac
 .DS_Store

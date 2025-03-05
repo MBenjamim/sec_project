@@ -8,8 +8,17 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.Key;
 
+/**
+ * Utility class for generating and saving AES keys.
+ */
 public class AESKeyGenerator {
 
+    /**
+     * Main method for generating and saving or loading AES keys.
+     *
+     * @param args command line arguments (mode and key file path)
+     * @throws Exception if an error occurs while generating or saving/loading the keys
+     */
     public static void main(String[] args) throws Exception {
 
         // check args
@@ -32,6 +41,13 @@ public class AESKeyGenerator {
         System.out.println("Done.");
     }
 
+    /**
+     * Generates an AES key and saves it to a file.
+     *
+     * @param keyPath the path to the key file
+     * @throws GeneralSecurityException if a security error occurs
+     * @throws IOException if an I/O error occurs
+     */
     public static void write(String keyPath) throws GeneralSecurityException, IOException {
         // get an AES private key
         System.out.println("Generating AES key ..." );
@@ -43,21 +59,29 @@ public class AESKeyGenerator {
         System.out.println("Key:");
         System.out.println(DataUtils.bytesToHex(encoded));
 
-        System.out.println("Writing key to '" + keyPath + "' ..." );
+        System.out.println("Writing key to '" + keyPath + "' ...");
 
-        FileOutputStream fos = new FileOutputStream(keyPath);
-        fos.write(encoded);
-        fos.close();
+        try (FileOutputStream fos = new FileOutputStream(keyPath)) {
+            fos.write(encoded);
+        }
     }
 
+    /**
+     * Reads an AES key from a file.
+     *
+     * @param keyPath the path to the key file
+     * @return the AES key
+     * @throws GeneralSecurityException if a security error occurs
+     * @throws IOException if an I/O error occurs
+     */
     public static Key read(String keyPath) throws GeneralSecurityException, IOException {
         System.out.println("Reading key from file " + keyPath + " ...");
-        FileInputStream fis = new FileInputStream(keyPath);
-        byte[] encoded = new byte[fis.available()];
-        fis.read(encoded);
-        fis.close();
+        byte[] encoded;
+        try (FileInputStream fis = new FileInputStream(keyPath)) {
+            encoded = new byte[fis.available()];
+            fis.read(encoded);
+        }
 
         return new SecretKeySpec(encoded, 0, 16, "AES");
     }
-
 }

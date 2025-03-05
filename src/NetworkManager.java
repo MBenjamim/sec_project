@@ -1,12 +1,38 @@
+import lombok.Getter;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
+/**
+ * Manages the network of nodes in the blockchain network.
+ */
+@Getter
 public class NetworkManager {
-    private final List<Node> networkNodes = new ArrayList<>();
+    private final Map<Integer, Node> networkNodes = new HashMap<>();
 
     private static final String CONFIG_FILE = "config.cfg";
+    private final int id;
+    private long sentMessages = 0;
+    private final KeyManager km;
 
+    /**
+     * Constructor for the NetworkManager class.
+     *
+     * @param port     the port number for the server
+     * @param serverId the unique identifier for the server
+     */
+    public NetworkManager(int port, int serverId) {
+        this.id = serverId;
+        this.km = new KeyManager(this);
+        loadNodesFromConfig();
+        startListeningForUDP(port);
+        initiateBlockchainNetwork(port);
+    }
+
+    /**
+     * Loads the nodes from the configuration file.
+     */
     public void loadNodesFromConfig() {
         Properties config = new Properties();
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
@@ -22,42 +48,43 @@ public class NetworkManager {
 
         for (int i = 0; i < numServers; i++) {
             int port = basePort + i;
-            networkNodes.add(new Node("localhost", port));
+            networkNodes.put(i, new Node(i, "localhost", port));
         }
 
         System.out.println("Loaded nodes from config:");
-        networkNodes.forEach(node -> System.out.println(node.getIp() + ":" + node.getPort()));
+        networkNodes.values().forEach(node -> System.out.println(node.getId() + ": " + node.getIp() + ":" + node.getPort()));
     }
 
+    /**
+     * Initiates the blockchain network by sending connect messages to other nodes.
+     *
+     * @param port the port number for the server
+     */
     public void initiateBlockchainNetwork(int port) {
-        try (DatagramSocket udpSocket = new DatagramSocket()) {
-            byte[] message = "Blockchain network initialized".getBytes();
-            for (Node node : networkNodes) {
-                if(node.port == port) 
-                    continue;
-                InetAddress address = InetAddress.getByName(node.ip);
-                DatagramPacket packet = new DatagramPacket(message, message.length, address, node.port);
-                udpSocket.send(packet);
-                System.out.println("Sent blockchain network message to " + node.ip + ":" + node.port);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        long messageId = generateMessageId();
+        for (Node node : networkNodes.values()) {
+            if (node.getPort() == port)
+                continue;
+            sendMessageThread(new Message(messageId, "CONNECT", id), node);
         }
     }
 
+    /**
+     * Starts listening for UDP messages on the specified port.
+     *
+     * @param port the port number to listen on
+     */
     public void startListeningForUDP(int port) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
-                byte[] buffer = new byte[1024];
-    
                 System.out.println("Listening for UDP messages on port " + port + "...");
-    
+
                 while (true) {
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    udpSocket.receive(packet); // Wait for incoming messages
-    
-                    String receivedMessage = new String(packet.getData(), 0, packet.getLength());
-                    System.out.println("Received UDP message on port " + port + ": " + receivedMessage);
+                    Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
+
+                    if (receivedMessage != null) {
+                        parseReceivedMessage(receivedMessage);
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -65,13 +92,74 @@ public class NetworkManager {
         }).start();
     }
 
-    public NetworkManager(int port){
-        loadNodesFromConfig();
-        startListeningForUDP(port);    
-        initiateBlockchainNetwork(port);
+    /**
+     * Parses and processes a received message in a separate thread.
+     * Verifies the message (authenticated reliable link) before processing it.
+     * Only processes messages from other nodes in a separate thread (for now).
+     *
+     * @param message the received message
+     */
+    public void parseReceivedMessage(Message message) {
+        new Thread(() -> {
+            Node sender = networkNodes.get(message.getSender());
+            if (!ReliableLink.verifyMessage(message, sender, km)) {
+                return;
+            }
+            processMessage(message, sender);
+        }).start();
     }
 
+    /**
+     * Sends a message using authenticated reliable links abstraction
+     * in a separate thread.
+     *
+     * @param message the message to send
+     * @param node    the node to send the message to
+     */
+    public void sendMessageThread(Message message, Node node) {
+        new Thread(() -> {
+            System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
+            ReliableLink.sendMessage(message, node, km);
+        }).start();
+    }
+
+    /**
+     * Processes a received message.
+     *
+     * @param message the message to process
+     */
+    public void processMessage(Message message, Node sender) {
+        System.out.println("Processing message: " + message);
+        switch (message.getType()) {
+            case "CONNECT":
+                sender.addReceivedMessage(message.getId(), message);
+                sendMessageThread(new Message(message.getId(), "ACK", id), sender);
+                break;
+            case "ACK":
+                sender.addReceivedMessage(message.getId(), message);
+                sender.ackMessage(message.getId());
+                break;
+            default:
+                System.out.println("Unknown message type: " + message.getType());
+                break;
+        }
+    }
+
+    /**
+     * Retrieves the list of network nodes.
+     *
+     * @return the list of network nodes
+     */
     public List<Node> getNetworkNodes() {
-        return this.networkNodes;
+        return new ArrayList<>(this.networkNodes.values());
+    }
+
+    /**
+     * Generates a unique message ID.
+     *
+     * @return the generated message ID
+     */
+    public long generateMessageId() {
+        return sentMessages++;
     }
 }

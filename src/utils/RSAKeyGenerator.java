@@ -1,87 +1,72 @@
 package utils;
 
-import javax.crypto.spec.SecretKeySpec;
-
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.*;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 
+/**
+ * Utility class for generating RSA key pairs and saving them to files.
+ */
 public class RSAKeyGenerator {
 
-    public static void main(String[] args) throws Exception {
+    private static final String ALGORITHM = "RSA";
+    private static final int KEY_SIZE = 4096;
 
-        // check args
-        if (args.length != 3) {
-            System.err.println("Usage: RSAKeyGenerator [r|w] <priv-key-file> <pub-key-file>");
+    /**
+     * Main method for generating and saving RSA key pairs.
+     *
+     * @param args command line arguments (private key file path and public key file path)
+     * @throws Exception if an error occurs while generating or saving the keys
+     */
+    public static void main(String[] args) throws Exception {
+        if (args.length != 2) {
+            System.err.println("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
             return;
         }
 
-        final String mode = args[0];
-        final String privkeyPath = args[1];
-        final String pubkeyPath = args[2];
+        final String privKeyPath = args[0];
+        final String pubKeyPath = args[1];
 
-        if (mode.toLowerCase().startsWith("w")) {
-            System.out.println("Generate and save keys");
-            write(privkeyPath, pubkeyPath);
-        } else {
-            System.out.println("Load keys");
-            read(privkeyPath, "priv");
-            read(pubkeyPath, "pub");
-        }
+        KeyPair keys = generateKeyPair();
+        saveKeys(privKeyPath, pubKeyPath, keys);
 
         System.out.println("Done.");
     }
 
-    public static void write(String privKeyPath, String pubKeyPath) throws GeneralSecurityException, IOException {
-        // get an AES private key
-        System.out.println("Generating RSA key ..." );
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(4096);
+    /**
+     * Generates an RSA key pair.
+     *
+     * @return the generated RSA key pair
+     * @throws NoSuchAlgorithmException if the RSA algorithm is not available
+     */
+    public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+        System.out.println("Generating " + ALGORITHM + " key ..." );
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
+        keyGen.initialize(KEY_SIZE);
         KeyPair keys = keyGen.generateKeyPair();
-        System.out.println("Finish generating RSA keys");
-        
-        System.out.println("Private Key:");
-        PrivateKey privKey = keys.getPrivate();
-        byte[] privKeyEncoded = privKey.getEncoded();
-        System.out.println("Encoded type '" + privKey.getFormat() + "' ..." );
+        System.out.println("Finish generating " + ALGORITHM + " keys");
+        return keys;
+    }
 
-        System.out.println(DataUtils.bytesToHex(privKeyEncoded));
-        System.out.println("Public Key:");
-        PublicKey pubKey = keys.getPublic();
-        byte[] pubKeyEncoded = pubKey.getEncoded();
-        System.out.println("Encoded type '" + pubKey.getFormat() + "' ..." );
-
-        System.out.println(DataUtils.bytesToHex(pubKeyEncoded));
+    /**
+     * Saves the RSA key pair to files.
+     *
+     * @param privKeyPath the path to the private key file
+     * @param pubKeyPath  the path to the public key file
+     * @param keys        the RSA key pair to save
+     * @throws IOException if an I/O error occurs
+     */
+    public static void saveKeys(String privKeyPath, String pubKeyPath, KeyPair keys) throws IOException {
+        byte[] privKey = keys.getPrivate().getEncoded();
+        byte[] pubKey = keys.getPublic().getEncoded();
 
         System.out.println("Writing Private key to '" + privKeyPath + "' ..." );
         try (FileOutputStream privFos = new FileOutputStream(privKeyPath)) {
-            privFos.write(privKeyEncoded);
+            privFos.write(privKey);
         }
         System.out.println("Writing Public key to '" + pubKeyPath + "' ..." );
         try (FileOutputStream pubFos = new FileOutputStream(pubKeyPath)) {
-            pubFos.write(pubKeyEncoded);
+            pubFos.write(pubKey);
         }
     }
-
-    public static Key read(String keyPath, String type) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        System.out.println("Reading key from file " + keyPath + " ...");
-        byte[] encoded;
-        try (FileInputStream fis = new FileInputStream(keyPath)) {
-            encoded = new byte[fis.available()];
-            fis.read(encoded);
-        }
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        if (type.equals("pub") ){
-            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
-            return keyFactory.generatePublic(keySpec);
-        }
-
-        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-        return keyFactory.generatePrivate(keySpec);
-    }
-
 }
