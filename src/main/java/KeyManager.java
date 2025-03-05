@@ -1,7 +1,8 @@
-import utils.RSAAuthenticator;
-import utils.RSAKeyReader;
-
+package main.java;
 import java.security.*;
+
+import main.java.utils.RSAAuthenticator;
+import main.java.utils.RSAKeyReader;
 
 /**
  * Manages the cryptographic keys and operations for the network.
