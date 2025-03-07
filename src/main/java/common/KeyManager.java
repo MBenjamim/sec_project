@@ -1,4 +1,4 @@
-package main.java;
+package main.java.common;
 import java.security.*;
 
 import main.java.crypto_utils.*;
@@ -40,10 +40,9 @@ public class KeyManager {
      * @throws InvalidKeyException      if the key is invalid
      */
     public byte[] signMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
-        int senderId = id;
         int receiverId = node.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
-        byte[] signature = RSAAuthenticator.signMessage(privateKey, senderId, receiverId, messageBytes);
+        byte[] signature = RSAAuthenticator.signMessage(privateKey, this.id, receiverId, messageBytes);
 
         message.setSignature(signature);
         return message.toJson().getBytes();
@@ -61,10 +60,9 @@ public class KeyManager {
      */
     public boolean verifyMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int senderId = node.getId();
-        int receiverId = id;
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
         byte[] signature = message.getSignature();
 
-        return RSAAuthenticator.verifySignature(node.getPublicKey(), senderId, receiverId, messageBytes, signature);
+        return RSAAuthenticator.verifySignature(node.getPublicKey(), senderId, this.id, messageBytes, signature);
     }
 }

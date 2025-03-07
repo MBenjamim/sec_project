@@ -3,6 +3,10 @@ server*/
 client*/
 public_keys/
 
+# Allow the specific 'server/' and 'client/' directories
+!server/
+!client/
+
 # Compiled Java class files
 *.class
 

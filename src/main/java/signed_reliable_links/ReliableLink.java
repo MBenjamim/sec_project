@@ -1,8 +1,8 @@
 package main.java.signed_reliable_links;
 
-import main.java.KeyManager;
-import main.java.Message;
-import main.java.Node;
+import main.java.common.KeyManager;
+import main.java.common.Message;
+import main.java.common.Node;
 
 import java.io.IOException;
 import java.net.DatagramPacket;

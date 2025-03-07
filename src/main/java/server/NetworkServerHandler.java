@@ -1,30 +1,31 @@
-package main.java;
+package main.java.server;
 
+import main.java.common.*;
 import main.java.signed_reliable_links.ReliableLink;
 
 /**
  * Handles server incoming messages.
  */
 public class NetworkServerHandler implements MessageHandler {
-    private final NetworkManager networkManager;
-    private final KeyManager km;
+    private final ServerState server;
+    private final NetworkManager manager;
 
     /**
      * Constructor for the NodeHandler class.
      *
-     * @param networkManager the network manager instance to receive messages
-     * @param km the key manager instance to sign and verify messages
+     * @param serverState the state that keep track of nodes and their message history,
+     *                    contains the key manager instance
      */
-    public NetworkServerHandler(NetworkManager networkManager, KeyManager km) {
-        this.networkManager = networkManager;
-        this.km = km;
+    public NetworkServerHandler(ServerState serverState) {
+        this.server = serverState;
+        this.manager = serverState.getNetworkManager();
     }
 
     @Override
     public void parseReceivedMessage(Message message) {
         new Thread(() -> {
-            Node sender = networkManager.getNetworkNodes().get(message.getSender());
-            if (!ReliableLink.verifyMessage(message, sender, km)) {
+            Node sender = server.getNetworkNodes().get(message.getSender());
+            if (!ReliableLink.verifyMessage(message, sender, server.getKeyManager())) {
                 return;
             }
             processMessage(message, sender);
@@ -37,7 +38,7 @@ public class NetworkServerHandler implements MessageHandler {
         switch (message.getType()) {
             case "CONNECT":
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), "ACK", networkManager.getId()), sender);
+                manager.sendMessageThread(new Message(message.getId(), "ACK", server.getId()), sender);
                 break;
             case "ACK":
                 sender.addReceivedMessage(message.getId(), message);

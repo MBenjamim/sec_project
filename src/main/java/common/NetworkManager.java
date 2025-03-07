@@ -1,9 +1,10 @@
-package main.java;
+package main.java.common;
 import lombok.Getter;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
 import main.java.signed_reliable_links.ReliableLink;
 
 /**
@@ -11,61 +12,27 @@ import main.java.signed_reliable_links.ReliableLink;
  */
 @Getter
 public class NetworkManager {
-    private final Map<Integer, Node> networkNodes = new HashMap<>();
-    private final Map<Integer, Node> networkClients = new HashMap<>();
-
     private final int id;
     private long sentMessages = 0;
-    private int timeout;
-
-    private final KeyManager km;
-    private ClientHandler clientHandler;
-    private NetworkServerHandler nodeHandler;
+    private final int timeout;
+    private final KeyManager keyManager;
 
     /**
      * Constructor for the NetworkManager class.
      *
-     * @param id the unique identifier for the server
+     * @param id         the unique identifier for the server
+     * @param keyManager for authenticated communication
      */
-    public NetworkManager(int id) {
+    public NetworkManager(int id, KeyManager keyManager, int timeout) {
         this.id = id;
-        this.km = new KeyManager(id, "server"); // FIXME
-        loadNodesFromConfig();
+        this.keyManager = keyManager;
+        this.timeout = timeout;
     }
 
-    public void startCommunications(int serverPort, int clientPort) {
-        startListeningForUDP(serverPort, nodeHandler);
-        initiateBlockchainNetwork(serverPort);
-        startListeningForUDP(clientPort, clientHandler);
-    }
-
-    /**
-     * Loads the nodes and clients from the configuration file.
-     */
-    public void loadNodesFromConfig() {
-        ConfigLoader config = new ConfigLoader();
-
-        int numServers = config.getIntProperty("NUM_SERVERS");
-        int numClients = config.getIntProperty("NUM_CLIENTS");
-        int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
-        int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
-        this.timeout = config.getIntProperty("TIMEOUT");
-
-        for (int i = 0; i < numServers; i++) {
-            int port = basePortServers + i;
-            networkNodes.put(i, new Node(i, "server", "localhost", port));
-        }
-        nodeHandler = new NetworkServerHandler(this, km);
-
-        for (int i = 0; i < numClients; i++) {
-            int port = basePortClients + i;
-            networkClients.put(i, new Node(i, "client", "localhost", port));
-        }
-        clientHandler = new ClientHandler(this, km);
-
-        System.out.println("[CONFIG] Loaded nodes and clients from config:");
-        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
-        networkClients.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+    public void startCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<Node> nodes) {
+        startListeningForUDP(serverPort, handler1);
+        initiateBlockchainNetwork(serverPort, nodes);
+        startListeningForUDP(clientPort, handler2);
     }
 
     /**
@@ -73,9 +40,9 @@ public class NetworkManager {
      *
      * @param port the port number for the server
      */
-    public void initiateBlockchainNetwork(int port) {
+    public void initiateBlockchainNetwork(int port, Collection<Node> nodes) {
         long messageId = generateMessageId();
-        for (Node node : networkNodes.values()) {
+        for (Node node : nodes) {
             if (node.getPort() == port)
                 continue;
             sendMessageThread(new Message(messageId, "CONNECT", id), node);
@@ -116,7 +83,7 @@ public class NetworkManager {
     public void sendMessageThread(Message message, Node node) {
         new Thread(() -> {
             System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
-            ReliableLink.sendMessage(message, node, km, timeout);
+            ReliableLink.sendMessage(message, node, keyManager, timeout);
         }).start();
     }
 

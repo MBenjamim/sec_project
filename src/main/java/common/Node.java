@@ -1,4 +1,4 @@
-package main.java;
+package main.java.common;
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
