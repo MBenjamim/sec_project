@@ -40,9 +40,9 @@ public class Message {
     public Message(long id, String type, int sender) {
         this.id = id;
         this.type = type;
-        this.received = false;
         this.sender = sender;
         this.content = "";
+        this.received = false;
     }
 
     /**

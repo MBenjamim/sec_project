@@ -1,34 +1,40 @@
 package main.java;
-import java.io.*;
-import java.net.*;
+
+import main.java.signed_reliable_links.ReliableLink;
 
 /**
- * Handles client connections and processes incoming messages.
+ * Handles client incoming messages.
  */
-public class ClientHandler implements Runnable {
-    private final Socket clientSocket;
+public class ClientHandler implements MessageHandler {
     private final NetworkManager networkManager;
+    private final KeyManager km;
+
 
     /**
      * Constructor for the ClientHandler class.
      *
-     * @param clientSocket   the socket for the client connection
-     * @param networkManager the network manager instance
+     * @param networkManager the network manager instance to receive messages
+     * @param km the key manager instance to sign and verify messages
      */
-    public ClientHandler(Socket clientSocket, NetworkManager networkManager) {
-        this.clientSocket = clientSocket;
+    public ClientHandler(NetworkManager networkManager, KeyManager km) {
         this.networkManager = networkManager;
+        this.km = km;
     }
 
-    /**
-     * Runs the client handler to process incoming messages.
-     */
     @Override
-    public void run() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-            clientSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void parseReceivedMessage(Message message) {
+        new Thread(() -> {
+            Node sender = networkManager.getNetworkClients().get(message.getSender());
+            if (!ReliableLink.verifyMessage(message, sender, km)) {
+                return;
+            }
+            processMessage(message, sender);
+        }).start();
+    }
+
+    @Override
+    public void processMessage(Message message, Node sender) {
+        // TODO
+        System.err.println("[TODO]");
     }
 }

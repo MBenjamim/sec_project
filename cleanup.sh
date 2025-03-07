@@ -2,25 +2,34 @@
 
 source config.cfg
 
-if [ -z "$NUM_SERVERS" ] || [ -z "$BASE_PORT" ]; then
-    echo "Configuration values (NUM_SERVERS or BASE_PORT) not set properly in config.cfg"
+if [ -z "$NUM_SERVERS" ] || [ -z "$NUM_CLIENTS" ] || [ -z "$BASE_PORT_SERVER_TO_SERVER" ] || [ -z "$BASE_PORT_CLIENT_TO_SERVER" ]; then
+    echo "Configuration values not set properly in config.cfg"
     exit 1
 fi
 
 mvn clean
 
-BASE_NAME="server"
+# Cleanup directory
+remove_dir() {
+    local DIR_NAME=$1
 
-# Cleanup each server directory
-for ((i=0; i<NUM_SERVERS; i++)); do
-    SERVER_DIR="${BASE_NAME}${i}"
-
-    if [ -d "$SERVER_DIR" ]; then
-        echo "Removing directory: $SERVER_DIR"
-        rm -rf "$SERVER_DIR"
+    if [ -d "$DIR_NAME" ]; then
+        echo "Removing directory: $DIR_NAME"
+        rm -rf "$DIR_NAME"
     else
-        echo "Directory $SERVER_DIR does not exist, skipping..."
+        echo "Directory $DIR_NAME does not exist, skipping..."
     fi
+}
+
+for ((i=0; i<NUM_SERVERS; i++)); do
+    remove_dir "server${i}"
+
 done
+
+for ((i=0; i<NUM_CLIENTS; i++)); do
+    remove_dir "client${i}"
+done
+
+remove_dir "public_keys"
 
 echo "Cleanup complete. All server directories and keys have been removed."

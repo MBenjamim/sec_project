@@ -1,5 +1,7 @@
 # Ignore directories storing key infrastructure
 server*/
+client*/
+public_keys/
 
 # Compiled Java class files
 *.class

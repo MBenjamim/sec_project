@@ -4,6 +4,7 @@ import lombok.Getter;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import main.java.signed_reliable_links.ReliableLink;
 
 /**
  * Manages the network of nodes in the blockchain network.
@@ -11,49 +12,60 @@ import java.util.*;
 @Getter
 public class NetworkManager {
     private final Map<Integer, Node> networkNodes = new HashMap<>();
+    private final Map<Integer, Node> networkClients = new HashMap<>();
 
-    private static final String CONFIG_FILE = "config.cfg";
     private final int id;
     private long sentMessages = 0;
+    private int timeout;
+
     private final KeyManager km;
+    private ClientHandler clientHandler;
+    private NetworkServerHandler nodeHandler;
 
     /**
      * Constructor for the NetworkManager class.
      *
-     * @param port     the port number for the server
-     * @param serverId the unique identifier for the server
+     * @param id the unique identifier for the server
      */
-    public NetworkManager(int port, int serverId) {
-        this.id = serverId;
-        this.km = new KeyManager(this);
+    public NetworkManager(int id) {
+        this.id = id;
+        this.km = new KeyManager(id, "server"); // FIXME
         loadNodesFromConfig();
-        startListeningForUDP(port);
-        initiateBlockchainNetwork(port);
+    }
+
+    public void startCommunications(int serverPort, int clientPort) {
+        startListeningForUDP(serverPort, nodeHandler);
+        initiateBlockchainNetwork(serverPort);
+        startListeningForUDP(clientPort, clientHandler);
     }
 
     /**
-     * Loads the nodes from the configuration file.
+     * Loads the nodes and clients from the configuration file.
      */
     public void loadNodesFromConfig() {
-        Properties config = new Properties();
-        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-            config.load(fis);
-        } catch (IOException e) {
-            System.err.println("Failed to load configuration file: " + CONFIG_FILE);
-            e.printStackTrace();
-            return;
-        }
+        ConfigLoader config = new ConfigLoader();
 
-        int numServers = Integer.parseInt(config.getProperty("NUM_SERVERS", "3"));
-        int basePort = Integer.parseInt(config.getProperty("BASE_PORT", "5000"));
+        int numServers = config.getIntProperty("NUM_SERVERS");
+        int numClients = config.getIntProperty("NUM_CLIENTS");
+        int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
+        int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
+        this.timeout = config.getIntProperty("TIMEOUT");
 
         for (int i = 0; i < numServers; i++) {
-            int port = basePort + i;
-            networkNodes.put(i, new Node(i, "localhost", port));
+            int port = basePortServers + i;
+            networkNodes.put(i, new Node(i, "server", "localhost", port));
         }
+        nodeHandler = new NetworkServerHandler(this, km);
 
-        System.out.println("Loaded nodes from config:");
-        networkNodes.values().forEach(node -> System.out.println(node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        for (int i = 0; i < numClients; i++) {
+            int port = basePortClients + i;
+            networkClients.put(i, new Node(i, "client", "localhost", port));
+        }
+        clientHandler = new ClientHandler(this, km);
+
+        System.out.println("[CONFIG] Loaded nodes and clients from config:");
+        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        networkClients.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
     }
 
     /**
@@ -73,9 +85,10 @@ public class NetworkManager {
     /**
      * Starts listening for UDP messages on the specified port.
      *
-     * @param port the port number to listen on
+     * @param port    the port number to listen on
+     * @param handler abstraction for message processing
      */
-    public void startListeningForUDP(int port) {
+    public void startListeningForUDP(int port, MessageHandler handler) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
                 System.out.println("Listening for UDP messages on port " + port + "...");
@@ -84,29 +97,12 @@ public class NetworkManager {
                     Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
 
                     if (receivedMessage != null) {
-                        parseReceivedMessage(receivedMessage);
+                        handler.parseReceivedMessage(receivedMessage);
                     }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }).start();
-    }
-
-    /**
-     * Parses and processes a received message in a separate thread.
-     * Verifies the message (authenticated reliable link) before processing it.
-     * Only processes messages from other nodes in a separate thread (for now).
-     *
-     * @param message the received message
-     */
-    public void parseReceivedMessage(Message message) {
-        new Thread(() -> {
-            Node sender = networkNodes.get(message.getSender());
-            if (!ReliableLink.verifyMessage(message, sender, km)) {
-                return;
-            }
-            processMessage(message, sender);
         }).start();
     }
 
@@ -120,39 +116,8 @@ public class NetworkManager {
     public void sendMessageThread(Message message, Node node) {
         new Thread(() -> {
             System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
-            ReliableLink.sendMessage(message, node, km);
+            ReliableLink.sendMessage(message, node, km, timeout);
         }).start();
-    }
-
-    /**
-     * Processes a received message.
-     *
-     * @param message the message to process
-     */
-    public void processMessage(Message message, Node sender) {
-        System.out.println("Processing message: " + message);
-        switch (message.getType()) {
-            case "CONNECT":
-                sender.addReceivedMessage(message.getId(), message);
-                sendMessageThread(new Message(message.getId(), "ACK", id), sender);
-                break;
-            case "ACK":
-                sender.addReceivedMessage(message.getId(), message);
-                sender.ackMessage(message.getId());
-                break;
-            default:
-                System.out.println("Unknown message type: " + message.getType());
-                break;
-        }
-    }
-
-    /**
-     * Retrieves the list of network nodes.
-     *
-     * @return the list of network nodes
-     */
-    public List<Node> getNetworkNodes() {
-        return new ArrayList<>(this.networkNodes.values());
     }
 
     /**
@@ -160,7 +125,7 @@ public class NetworkManager {
      *
      * @return the generated message ID
      */
-    public long generateMessageId() {
+    synchronized public long generateMessageId() {
         return sentMessages++;
     }
 }

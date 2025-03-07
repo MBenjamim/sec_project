@@ -1,4 +1,4 @@
-package main.java.utils;
+package main.java.crypto_utils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -53,7 +53,10 @@ public class RSAKeyReader {
         byte[] encoded = readKey(privKeyPath);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-        return keyFactory.generatePrivate(keySpec);
+
+        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+        System.out.println("[KEY] Key successfully read from file " + privKeyPath);
+        return privKey;
     }
 
     /**
@@ -69,7 +72,10 @@ public class RSAKeyReader {
         byte[] encoded = readKey(pubKeyPath);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
-        return keyFactory.generatePublic(keySpec);
+
+        PublicKey pubKey = keyFactory.generatePublic(keySpec);
+        System.out.println("[KEY] Key successfully read from file " + pubKeyPath);
+        return pubKey;
     }
 
     /**
@@ -80,7 +86,7 @@ public class RSAKeyReader {
      * @throws IOException if an I/O error occurs
      */
     private static byte[] readKey(String keyPath) throws IOException {
-        System.out.println("Reading key from file " + keyPath + " ...");
+        System.out.println("[KEY] Reading key from file " + keyPath + "...");
         byte[] encoded;
         try (FileInputStream fis = new FileInputStream(keyPath)) {
             encoded = new byte[fis.available()];

@@ -1,4 +1,9 @@
-package main.java;
+package main.java.signed_reliable_links;
+
+import main.java.KeyManager;
+import main.java.Message;
+import main.java.Node;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -37,7 +42,7 @@ public class ReliableLink {
     }
 
     /**
-     * Verifies the authenticity of a received message using the KeyManager
+     * Verifies the authenticity of a received message using the KeyManager.
      *
      * @param message the message to verify
      * @param sender  the node that sent the message
@@ -47,11 +52,11 @@ public class ReliableLink {
     public static boolean verifyMessage(Message message, Node sender, KeyManager km) {
         try {
             if (sender == null || !km.verifyMessage(message, sender)) {
-                System.err.println("Invalid message: " + message);
+                System.err.println("[ERROR] Invalid message: " + message);
                 return false;
             }
-        } catch (Exception e) {
-            System.err.println("Failed to verify message");
+        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
+            System.err.println("[ERROR] Failed to verify message");
             e.printStackTrace();
             return false;
         }
@@ -64,8 +69,9 @@ public class ReliableLink {
      * @param message the message to send
      * @param node    the node to send the message to
      * @param km      required KeyManager to sign the message
+     * @param timeout number of tries to send the message
      */
-    public static void sendMessage(Message message, Node node, KeyManager km) {
+    public static void sendMessage(Message message, Node node, KeyManager km, int timeout) {
         int relay = 0;
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());
@@ -84,14 +90,18 @@ public class ReliableLink {
             node.addSentMessage(message.getId(), message);
 
             do {
+                if (relay > timeout) {
+                    System.err.println("[ERROR] Timed out waiting for ack for message to " + node.getIp() + ":" + node.getPort());
+                }
+
                 udpSocket.send(packet);
-                System.out.println("Sent " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
-                System.out.println("Message: " + message);
+                System.out.println("Sent " + message.getType() +
+                        " message to " + node.getIp() + ":" + node.getPort() + "\n" + "Message: " + message);
 
                 try {
                     Thread.sleep(200L * relay);
                 } catch (InterruptedException e) {
-                    System.out.println("Wait interrupted: " + e.getMessage());
+                    System.out.println("[ERROR] Wait interrupted: " + e.getMessage());
                     Thread.currentThread().interrupt();
                 }
                 relay++;
@@ -100,7 +110,7 @@ public class ReliableLink {
         } catch (IOException e) {
             e.printStackTrace();
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            System.err.println("Failed to sign message:");
+            System.err.println("[ERROR] Failed to sign message...");
             e.printStackTrace();
         }
     }

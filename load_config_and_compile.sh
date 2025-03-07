@@ -2,8 +2,8 @@
 
 source config.cfg
 
-if [ -z "$NUM_SERVERS" ] || [ -z "$BASE_PORT" ]; then
-    echo "Configuration values (NUM_SERVERS or BASE_PORT) not set properly in config.cfg"
+if [ -z "$NUM_SERVERS" ] || [ -z "$NUM_CLIENTS" ] || [ -z "$BASE_PORT_SERVER_TO_SERVER" ] || [ -z "$BASE_PORT_CLIENT_TO_SERVER" ]; then
+    echo "Configuration values not set properly in config.cfg"
     exit 1
 fi
 

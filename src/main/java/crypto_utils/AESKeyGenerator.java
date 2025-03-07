@@ -1,4 +1,4 @@
-package main.java.utils;
+package main.java.crypto_utils;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.spec.SecretKeySpec;

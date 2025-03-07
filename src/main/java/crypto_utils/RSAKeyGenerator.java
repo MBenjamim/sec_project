@@ -1,4 +1,4 @@
-package main.java.utils;
+package main.java.crypto_utils;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
