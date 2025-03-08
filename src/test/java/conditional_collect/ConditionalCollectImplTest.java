@@ -1,8 +1,8 @@
-package test.java.conditionalcollect;
+package test.java.conditional_collect;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import main.java.conditionalcollect.ConditionalCollectImpl;
+import main.java.conditional_collect.ConditionalCollectImpl;
 
 import java.util.Map;
 
