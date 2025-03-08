@@ -32,7 +32,7 @@ public class ConditionalCollectImpl implements ConditionalCollect {
      * @param value The proposed value
      */
     @Override
-    public void addProposedValue(int processId, String value) {
+    synchronized public void addProposedValue(int processId, String value) {
         proposedValues.put(processId, value);
     }
 
@@ -43,7 +43,7 @@ public class ConditionalCollectImpl implements ConditionalCollect {
      * @return A map of process IDs to their collected values
      */
     @Override
-    public Map<Integer, String> collectValues() {
+    synchronized public Map<Integer, String> collectValues() {
         Map<Integer, String> collectedValues = new HashMap<>();
         if (this.proposedValues.size() >= N - F) {
             for (Map.Entry<Integer, String> entry : proposedValues.entrySet()) {
