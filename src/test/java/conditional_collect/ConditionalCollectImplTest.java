@@ -14,22 +14,24 @@ public class ConditionalCollectImplTest {
 
     @BeforeEach
     public void setUp() {
-        conditionalCollect = new ConditionalCollectImpl();
+        conditionalCollect = new ConditionalCollectImpl(4, 1);
     }
 
     @Test
-    public void testProposeValue() {
-        conditionalCollect.proposeValue(1, "Value1");
+    public void testAddProposedValue() {
+        conditionalCollect.addProposedValue(1, "Value1");
+        conditionalCollect.addProposedValue(2, "Value2");
+        conditionalCollect.addProposedValue(3, "Value3");
         Map<Integer, String> proposedValues = conditionalCollect.collectValues();
-        assertEquals(1, proposedValues.size());
+        assertEquals(3, proposedValues.size());
         assertEquals("Value1", proposedValues.get(1));
     }
 
     @Test
     public void testCollectValues() {
-        conditionalCollect.proposeValue(1, "Value1");
-        conditionalCollect.proposeValue(2, "Value2");
-        conditionalCollect.proposeValue(3, "");
+        conditionalCollect.addProposedValue(1, "Value1");
+        conditionalCollect.addProposedValue(2, "Value2");
+        conditionalCollect.addProposedValue(3, "");
 
         Map<Integer, String> collectedValues = conditionalCollect.collectValues();
         assertEquals(2, collectedValues.size());
