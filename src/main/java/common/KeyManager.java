@@ -1,26 +1,26 @@
-package main.java;
+package main.java.common;
 import java.security.*;
 
-import main.java.utils.RSAAuthenticator;
-import main.java.utils.RSAKeyReader;
+import main.java.crypto_utils.*;
 
 /**
  * Manages the cryptographic keys and operations for the network.
  */
 public class KeyManager {
-    private final NetworkManager networkManager;
-    private final String keyDir;
+    private final int id;
     private PrivateKey privateKey;
     // private PublicKey publicKey;
 
     /**
      * Constructor for the KeyManager class.
      *
-     * @param networkManager the network manager instance
+     * @param id   identifier of the server / client
+     * @param type can be either "server" or "client"
+     *             The combination of `id` and `type` must be unique together
      */
-    public KeyManager(NetworkManager networkManager) {
-        this.networkManager = networkManager;
-        this.keyDir = "server" + networkManager.getId() + "/";
+    public KeyManager(int id, String type) {
+        this.id = id;
+        String keyDir = type + id + "/";
         try {
             this.privateKey = RSAKeyReader.readPrivateKey(keyDir + "private.key");
             // this.publicKey = RSAKeyReader.readPublicKey(keyDir + "public.key");
@@ -39,11 +39,10 @@ public class KeyManager {
      * @throws SignatureException       if an error occurs during signing
      * @throws InvalidKeyException      if the key is invalid
      */
-    public byte[] signMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
-        int senderId = networkManager.getId();
+    public byte[] signMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int receiverId = node.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
-        byte[] signature = RSAAuthenticator.signMessage(privateKey, senderId, receiverId, messageBytes);
+        byte[] signature = RSAAuthenticator.signMessage(privateKey, this.id, receiverId, messageBytes);
 
         message.setSignature(signature);
         return message.toJson().getBytes();
@@ -59,12 +58,11 @@ public class KeyManager {
      * @throws SignatureException       if an error occurs during verification
      * @throws InvalidKeyException      if the key is invalid
      */
-    public boolean verifyMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+    public boolean verifyMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int senderId = node.getId();
-        int receiverId = networkManager.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
         byte[] signature = message.getSignature();
 
-        return RSAAuthenticator.verifySignature(node.getPublicKey(keyDir), senderId, receiverId, messageBytes, signature);
+        return RSAAuthenticator.verifySignature(node.getPublicKey(), senderId, this.id, messageBytes, signature);
     }
 }

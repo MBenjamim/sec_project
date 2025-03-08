@@ -1,4 +1,4 @@
-package main.java.utils;
+package main.java.crypto_utils;
 
 /**
  * Utility class for data conversion operations.

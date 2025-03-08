@@ -1,4 +1,4 @@
-package main.java;
+package main.java.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,9 +40,9 @@ public class Message {
     public Message(long id, String type, int sender) {
         this.id = id;
         this.type = type;
-        this.received = false;
         this.sender = sender;
         this.content = "";
+        this.received = false;
     }
 
     /**

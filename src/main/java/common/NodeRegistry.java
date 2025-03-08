@@ -1,18 +1,20 @@
-package main.java;
+package main.java.common;
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
 
 import lombok.Getter;
 import lombok.Setter;
-import main.java.utils.RSAKeyReader;
+import main.java.crypto_utils.RSAKeyReader;
 
 @Getter
 @Setter
-public class Node {
+public class NodeRegistry {
+    private static final String publicKeysDir = "public_keys/";
     private String ip;
     private int port;
     private int id;
+    private String type;
     private PublicKey publicKey;
 
     Map<Long, Message> sentMessages = new HashMap<>();
@@ -25,8 +27,9 @@ public class Node {
      * @param ip    the IP address of the node
      * @param port  the port number of the node
      */
-    public Node(int id, String ip, int port) {
+    public NodeRegistry(int id, String type, String ip, int port) {
         this.id = id;
+        this.type = type;
         this.ip = ip;
         this.port = port;
         this.publicKey = null;
@@ -35,13 +38,12 @@ public class Node {
     /**
      * Retrieves the public key for the node.
      *
-     * @param dir the directory where the public key file is located
      * @return the public key of the node
      */
-    synchronized public PublicKey getPublicKey(String dir) {
+    synchronized public PublicKey getPublicKey() {
         try {
             if (publicKey == null) {
-                this.publicKey = RSAKeyReader.readPublicKey(dir + "server" + id + "_public.key");
+                this.publicKey = RSAKeyReader.readPublicKey(publicKeysDir + type + id + "_public.key");
             }
         } catch (Exception e) {
             e.printStackTrace();

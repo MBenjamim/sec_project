@@ -1,4 +1,4 @@
-package main.java.conditionalcollect;
+package main.java.conditional_collect;
 
 import java.util.Map;
 
