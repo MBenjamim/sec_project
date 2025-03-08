@@ -1,35 +1,36 @@
 package main.java.server;
 
-import main.java.common.KeyManager;
-import main.java.common.NetworkManager;
-import main.java.common.Node;
-import main.java.common.Message;
-import main.java.common.MessageHandler;
+import main.java.common.*;
 import main.java.signed_reliable_links.ReliableLink;
+
+import java.util.Map;
 
 /**
  * Handles client incoming messages.
  */
 public class ClientHandler implements MessageHandler {
-    private final ServerState state;
-    private final NetworkManager manager;
+    private final Map<Integer, NodeRegistry> clientNodes;
+    private final NetworkManager networkManager;
+    private final KeyManager keyManager;
 
     /**
-     * Constructor for the ClientHandler class.
+     * Constructor for the NodeHandler class.
      *
-     * @param serverState the state that keep track of nodes and their message history,
-     *                    contains the key manager instance
+     * @param clientNodes    keep track of nodes and their message history
+     * @param networkManager to send back messages if needed
+     * @param keyManager     to verify signatures
      */
-    public ClientHandler(ServerState serverState) {
-        this.state = serverState;
-        this.manager = serverState.getNetworkManager();
+    public ClientHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager) {
+        this.clientNodes = clientNodes;
+        this.networkManager = networkManager;
+        this.keyManager = keyManager;
     }
 
     @Override
     public void parseReceivedMessage(Message message) {
         new Thread(() -> {
-            Node sender = state.getNetworkClients().get(message.getSender());
-            if (!ReliableLink.verifyMessage(message, sender, state.getKeyManager())) {
+            NodeRegistry sender = clientNodes.get(message.getSender());
+            if (!ReliableLink.verifyMessage(message, sender, keyManager)) {
                 return;
             }
             processMessage(message, sender);
@@ -37,7 +38,7 @@ public class ClientHandler implements MessageHandler {
     }
 
     @Override
-    public void processMessage(Message message, Node sender) {
+    public void processMessage(Message message, NodeRegistry sender) {
         // TODO
         System.err.println("[TODO]");
     }

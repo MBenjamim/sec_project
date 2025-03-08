@@ -9,7 +9,7 @@ import main.java.crypto_utils.RSAKeyReader;
 
 @Getter
 @Setter
-public class Node {
+public class NodeRegistry {
     private static final String publicKeysDir = "public_keys/";
     private String ip;
     private int port;
@@ -27,7 +27,7 @@ public class Node {
      * @param ip    the IP address of the node
      * @param port  the port number of the node
      */
-    public Node(int id, String type, String ip, int port) {
+    public NodeRegistry(int id, String type, String ip, int port) {
         this.id = id;
         this.type = type;
         this.ip = ip;

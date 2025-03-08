@@ -2,7 +2,7 @@ package main.java.signed_reliable_links;
 
 import main.java.common.KeyManager;
 import main.java.common.Message;
-import main.java.common.Node;
+import main.java.common.NodeRegistry;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -49,7 +49,7 @@ public class ReliableLink {
      * @param km      the KeyManager used for verification
      * @return true if the message is valid, false otherwise
      */
-    public static boolean verifyMessage(Message message, Node sender, KeyManager km) {
+    public static boolean verifyMessage(Message message, NodeRegistry sender, KeyManager km) {
         try {
             if (sender == null || !km.verifyMessage(message, sender)) {
                 System.err.println("[ERROR] Invalid message: " + message);
@@ -71,7 +71,7 @@ public class ReliableLink {
      * @param km      required KeyManager to sign the message
      * @param timeout number of tries to send the message
      */
-    public static void sendMessage(Message message, Node node, KeyManager km, int timeout) {
+    public static void sendMessage(Message message, NodeRegistry node, KeyManager km, int timeout) {
         int relay = 0;
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());

@@ -1,18 +1,27 @@
 package main.java.server;
 
 import main.java.common.ConfigLoader;
+import main.java.common.KeyManager;
 import main.java.common.NetworkManager;
-import main.java.common.Node;
+import main.java.common.NodeRegistry;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Represents a server in the blockchain network.
  * Listens for connections from clients and other blockchain members.
  */
 public class BlockchainNetworkServer {
+    private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
+    private final Map<Integer, NodeRegistry> networkClients = new HashMap<>();
+
     private final int serverPort;
     private final int clientPort;
+    private final int id;
 
-    private final ServerState state;
+    private final KeyManager keyManager;
+    private NetworkManager networkManager;
 
     /**
      * Constructor for the BlockchainNetworkServer class.
@@ -22,10 +31,10 @@ public class BlockchainNetworkServer {
      * @param clientPort the port number to listen from clients
      */
     public BlockchainNetworkServer(int serverId, int serverPort, int clientPort) {
+        this.id = serverId;
         this.serverPort = serverPort;
         this.clientPort = clientPort;
-
-        this.state = new ServerState(serverId);
+        this.keyManager = new KeyManager(id, "server");
     }
 
     /**
@@ -44,6 +53,7 @@ public class BlockchainNetworkServer {
         int clientPort = Integer.parseInt(args[2]);
 
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort);
+        server.loadConfig();
         server.start();
     }
 
@@ -51,20 +61,16 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        int timeout = loadNodesFromConfig();
-        NetworkManager networkManager = new NetworkManager(state.getId(), state.getKeyManager(), timeout);
-        state.setNetworkManager(networkManager);
-        NetworkServerHandler serverHandler = new NetworkServerHandler(state);
-        ClientHandler clientHandler = new ClientHandler(state);
-        networkManager.startCommunications(serverPort, clientPort, serverHandler, clientHandler, state.getNetworkNodes().values());
+        NetworkServerHandler serverHandler = new NetworkServerHandler(networkNodes, networkManager, keyManager);
+        ClientHandler clientHandler = new ClientHandler(networkClients, networkManager, keyManager);
+        networkManager.startCommunications(serverPort, clientPort, serverHandler, clientHandler, networkNodes.values());
     }
 
     /**
      * Loads the nodes and clients from the configuration file.
-     *
-     * @return timeout that will be used during communications
+     * Creates the NetworkManager.
      */
-    public int loadNodesFromConfig() {
+    public void loadConfig() {
         ConfigLoader config = new ConfigLoader();
 
         int numServers = config.getIntProperty("NUM_SERVERS");
@@ -75,18 +81,18 @@ public class BlockchainNetworkServer {
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
-            state.putServerNode(i, new Node(i, "server", "localhost", port));
+            networkNodes.put(i, new NodeRegistry(i, "server", "localhost", port));
         }
 
         for (int i = 0; i < numClients; i++) {
             int port = basePortClients + i;
-            state.putClientNode(i, new Node(i, "client", "localhost", port));
+            networkClients.put(i, new NodeRegistry(i, "client", "localhost", port));
         }
 
-        System.out.println("[CONFIG] Loaded nodes and clients from config:");
-        state.getNetworkNodes().values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
-        state.getNetworkClients().values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        this.networkManager = new NetworkManager(id, keyManager, timeout);
 
-        return timeout;
+        System.out.println("[CONFIG] Loaded nodes and clients from config:");
+        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        networkClients.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
     }
 }

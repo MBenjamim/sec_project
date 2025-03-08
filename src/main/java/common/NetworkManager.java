@@ -8,7 +8,7 @@ import java.util.*;
 import main.java.signed_reliable_links.ReliableLink;
 
 /**
- * Manages the network of nodes in the blockchain network.
+ * Manages the network communication of a node.
  */
 @Getter
 public class NetworkManager {
@@ -29,7 +29,7 @@ public class NetworkManager {
         this.timeout = timeout;
     }
 
-    public void startCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<Node> nodes) {
+    public void startCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
         startListeningForUDP(serverPort, handler1);
         initiateBlockchainNetwork(serverPort, nodes);
         startListeningForUDP(clientPort, handler2);
@@ -40,9 +40,9 @@ public class NetworkManager {
      *
      * @param port the port number for the server
      */
-    public void initiateBlockchainNetwork(int port, Collection<Node> nodes) {
+    public void initiateBlockchainNetwork(int port, Collection<NodeRegistry> nodes) {
         long messageId = generateMessageId();
-        for (Node node : nodes) {
+        for (NodeRegistry node : nodes) {
             if (node.getPort() == port)
                 continue;
             sendMessageThread(new Message(messageId, "CONNECT", id), node);
@@ -80,7 +80,7 @@ public class NetworkManager {
      * @param message the message to send
      * @param node    the node to send the message to
      */
-    public void sendMessageThread(Message message, Node node) {
+    public void sendMessageThread(Message message, NodeRegistry node) {
         new Thread(() -> {
             System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
             ReliableLink.sendMessage(message, node, keyManager, timeout);

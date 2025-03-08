@@ -39,7 +39,7 @@ public class KeyManager {
      * @throws SignatureException       if an error occurs during signing
      * @throws InvalidKeyException      if the key is invalid
      */
-    public byte[] signMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+    public byte[] signMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int receiverId = node.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
         byte[] signature = RSAAuthenticator.signMessage(privateKey, this.id, receiverId, messageBytes);
@@ -58,7 +58,7 @@ public class KeyManager {
      * @throws SignatureException       if an error occurs during verification
      * @throws InvalidKeyException      if the key is invalid
      */
-    public boolean verifyMessage(Message message, Node node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+    public boolean verifyMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int senderId = node.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
         byte[] signature = message.getSignature();

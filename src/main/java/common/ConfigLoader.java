@@ -13,6 +13,7 @@ public class ConfigLoader {
     private final Properties config;
 
     /**
+     * Constructor for the ConfigLoader class.
      * Loads the configuration from the file.
      */
     public ConfigLoader() {
