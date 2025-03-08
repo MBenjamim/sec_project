@@ -14,7 +14,7 @@ public class ClientHandler implements MessageHandler {
     private final KeyManager keyManager;
 
     /**
-     * Constructor for the NodeHandler class.
+     * Constructor for the ClientHandler class.
      *
      * @param clientNodes    keep track of nodes and their message history
      * @param networkManager to send back messages if needed

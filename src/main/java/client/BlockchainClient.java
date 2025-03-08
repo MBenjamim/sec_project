@@ -50,6 +50,7 @@ public class BlockchainClient {
 
         BlockchainClient client = new BlockchainClient(serverId, serverPort);
         client.loadConfig();
+        client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
         client.start();
     }
 
@@ -76,8 +77,6 @@ public class BlockchainClient {
             int port = basePort + i;
             networkNodes.put(i, new NodeRegistry(i, "server", "localhost", port));
         }
-
-        this.networkManager = new NetworkManager(id, keyManager, timeout);
 
         System.out.println("[CONFIG] Loaded nodes from config:");
         networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));

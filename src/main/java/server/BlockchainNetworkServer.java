@@ -19,6 +19,7 @@ public class BlockchainNetworkServer {
     private final int serverPort;
     private final int clientPort;
     private final int id;
+    private int timeout;
 
     private final KeyManager keyManager;
     private NetworkManager networkManager;
@@ -54,6 +55,7 @@ public class BlockchainNetworkServer {
 
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort);
         server.loadConfig();
+        server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
         server.start();
     }
 
@@ -77,7 +79,7 @@ public class BlockchainNetworkServer {
         int numClients = config.getIntProperty("NUM_CLIENTS");
         int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
-        int timeout = config.getIntProperty("TIMEOUT");
+        this.timeout = config.getIntProperty("TIMEOUT");
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
@@ -88,8 +90,6 @@ public class BlockchainNetworkServer {
             int port = basePortClients + i;
             networkClients.put(i, new NodeRegistry(i, "client", "localhost", port));
         }
-
-        this.networkManager = new NetworkManager(id, keyManager, timeout);
 
         System.out.println("[CONFIG] Loaded nodes and clients from config:");
         networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
