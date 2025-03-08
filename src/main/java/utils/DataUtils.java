@@ -1,4 +1,4 @@
-package utils;
+package main.java.utils;
 
 /**
  * Utility class for data conversion operations.

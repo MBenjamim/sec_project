@@ -1,10 +1,11 @@
+package main.java;
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
 
 import lombok.Getter;
 import lombok.Setter;
-import utils.RSAKeyReader;
+import main.java.utils.RSAKeyReader;
 
 @Getter
 @Setter

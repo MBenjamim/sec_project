@@ -1,3 +1,4 @@
+package main.java;
 import lombok.Getter;
 
 import java.io.*;
