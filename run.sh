@@ -13,12 +13,7 @@ fi
 for ((i=1; i<$NUM_SERVERS; i++)); do
     SERVER_PORT=$((BASE_PORT_SERVER_TO_SERVER + i))
     CLIENT_PORT=$((BASE_PORT_CLIENT_TO_SERVER + i))
-    if [ $((i % 2)) -eq 1 ]; then
-        tmux split-window -h "mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args=\"$i $SERVER_PORT $CLIENT_PORT\""
-    else
-        tmux split-window -v "mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args=\"$i $SERVER_PORT $CLIENT_PORT\""
-    fi
-    tmux select-layout tiled
+    tmux new-window -n server_$i "mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args=\"$i $SERVER_PORT $CLIENT_PORT\""
     sleep 1
 done
 
