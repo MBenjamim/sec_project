@@ -6,12 +6,16 @@ import java.net.*;
 import java.util.*;
 
 import main.java.signed_reliable_links.ReliableLink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages the network communication of a node.
  */
 @Getter
 public class NetworkManager {
+    private static final Logger logger = LoggerFactory.getLogger(NetworkManager.class);
+
     private final int id;
     private long sentMessages = 0;
     private final int timeout;
@@ -63,7 +67,7 @@ public class NetworkManager {
     public void startListeningForUDP(int port, MessageHandler handler) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
-                System.out.println("Listening for UDP messages on port " + port + "...");
+                logger.debug("Listening for UDP messages on port {}...", port);
 
                 while (true) {
                     Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
@@ -73,7 +77,7 @@ public class NetworkManager {
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Error while listening for UDP messages", e);
             }
         }).start();
     }
@@ -87,7 +91,7 @@ public class NetworkManager {
      */
     public void sendMessageThread(Message message, NodeRegistry node) {
         new Thread(() -> {
-            System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
+            logger.debug("Sending message: {id:{}, content:\"{}\", type:{}, receiver:{}{}}", message.getId(), message.getContent(), message.getType(), node.getType(), node.getId());
             ReliableLink.sendMessage(message, node, keyManager, timeout);
         }).start();
     }

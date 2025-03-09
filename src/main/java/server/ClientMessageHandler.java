@@ -2,6 +2,8 @@ package main.java.server;
 
 import main.java.common.*;
 import main.java.signed_reliable_links.ReliableLink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -9,6 +11,8 @@ import java.util.Map;
  * Handles client incoming messages.
  */
 public class ClientMessageHandler implements MessageHandler {
+    private static final Logger logger = LoggerFactory.getLogger(ClientMessageHandler.class);
+
     private final Map<Integer, NodeRegistry> clientNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
@@ -39,7 +43,7 @@ public class ClientMessageHandler implements MessageHandler {
 
     @Override
     public void processMessage(Message message, NodeRegistry sender) {
-        System.out.println("Processing message: id:" + message.getId() + " content:" + "\"" + message.getContent() + "\"" + " type:" + message.getType() + " sender:" + sender.getType() + sender.getId());
+        logger.info("Processing message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
@@ -55,7 +59,7 @@ public class ClientMessageHandler implements MessageHandler {
                 //TODO process client write
                 break;
             default:
-                System.out.println("Unknown message type: " + message.getType());
+                logger.error("Unknown message type: {}", message.getType());
                 break;
         }
     }

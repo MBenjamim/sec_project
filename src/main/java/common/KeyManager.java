@@ -1,12 +1,21 @@
 package main.java.common;
-import java.security.*;
+
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.SignatureException;
 
 import main.java.crypto_utils.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages the cryptographic keys and operations for the network.
  */
 public class KeyManager {
+    private static final Logger logger = LoggerFactory.getLogger(KeyManager.class);
+
+
     private final int id;
     private PrivateKey privateKey;
     // private PublicKey publicKey;
@@ -25,7 +34,7 @@ public class KeyManager {
             this.privateKey = RSAKeyReader.readPrivateKey(keyDir + "private.key");
             // this.publicKey = RSAKeyReader.readPublicKey(keyDir + "public.key");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to read key files", e);
         }
     }
 

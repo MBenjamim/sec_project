@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
 
@@ -20,6 +22,8 @@ import java.util.Base64;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Message {
+    private static final Logger logger = LoggerFactory.getLogger(Message.class);
+
     private long id;
     private int sender;
     private MessageType type;
@@ -78,7 +82,7 @@ public class Message {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.writeValueAsString(this);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert message to JSON", e);
             return null;
         }
     }
@@ -94,7 +98,7 @@ public class Message {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(json, Message.class);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert JSON to message", e);
             return null;
         }
     }

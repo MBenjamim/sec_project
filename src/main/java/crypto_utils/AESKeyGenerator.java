@@ -1,5 +1,8 @@
 package main.java.crypto_utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.KeyGenerator;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.FileInputStream;
@@ -12,6 +15,8 @@ import java.security.Key;
  * Utility class for generating and saving AES keys.
  */
 public class AESKeyGenerator {
+    private static final Logger logger = LoggerFactory.getLogger(AESKeyGenerator.class);
+
 
     /**
      * Main method for generating and saving or loading AES keys.
@@ -23,7 +28,7 @@ public class AESKeyGenerator {
 
         // check args
         if (args.length != 2) {
-            System.err.println("Usage: AESKeyGenerator [r|w] <key-file>");
+            logger.error("Usage: AESKeyGenerator [r|w] <key-file>");
             return;
         }
 
@@ -31,14 +36,14 @@ public class AESKeyGenerator {
         final String keyPath = args[1];
 
         if (mode.toLowerCase().startsWith("w")) {
-            System.out.println("Generate and save keys");
+            logger.info("Generate and save keys");
             write(keyPath);
         } else {
-            System.out.println("Load keys");
+            logger.info("Load keys");
             read(keyPath);
         }
 
-        System.out.println("Done.");
+        logger.info("Done.");
     }
 
     /**
@@ -50,16 +55,16 @@ public class AESKeyGenerator {
      */
     public static void write(String keyPath) throws GeneralSecurityException, IOException {
         // get an AES private key
-        System.out.println("Generating AES key ..." );
+        logger.info("Generating AES key ...");
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(128);
         Key key = keyGen.generateKey();
-        System.out.println( "Finish generating AES key" );
+        logger.info("Finish generating AES key");
         byte[] encoded = key.getEncoded();
-        System.out.println("Key:");
-        System.out.println(DataUtils.bytesToHex(encoded));
+        logger.info("Key:");
+        logger.info(DataUtils.bytesToHex(encoded));
 
-        System.out.println("Writing key to '" + keyPath + "' ...");
+        logger.info("Writing key to '{}' ...", keyPath);
 
         try (FileOutputStream fos = new FileOutputStream(keyPath)) {
             fos.write(encoded);
@@ -75,7 +80,7 @@ public class AESKeyGenerator {
      * @throws IOException if an I/O error occurs
      */
     public static Key read(String keyPath) throws GeneralSecurityException, IOException {
-        System.out.println("Reading key from file " + keyPath + " ...");
+        logger.info("Reading key from file {} ...", keyPath);
         byte[] encoded;
         try (FileInputStream fis = new FileInputStream(keyPath)) {
             encoded = new byte[fis.available()];

@@ -4,6 +4,8 @@ import main.java.common.ConfigLoader;
 import main.java.common.KeyManager;
 import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +15,8 @@ import java.util.Map;
  * Listens for connections from clients and other blockchain members.
  */
 public class BlockchainNetworkServer {
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainNetworkServer.class);
+
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
     private final Map<Integer, NodeRegistry> networkClients = new HashMap<>();
 
@@ -45,7 +49,7 @@ public class BlockchainNetworkServer {
      */
     public static void main(String[] args) {
         if (args.length != 3) {
-            System.err.println("Usage: java BlockchainNetworkServer <serverId> <serverPort> <clientPort>");
+            logger.error("Usage: java BlockchainNetworkServer <serverId> <serverPort> <clientPort>");
             System.exit(1);
         }
 
@@ -91,8 +95,8 @@ public class BlockchainNetworkServer {
             networkClients.put(i, new NodeRegistry(i, "client", "localhost", port));
         }
 
-        System.out.println("[CONFIG] Loaded nodes and clients from config:");
-        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
-        networkClients.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        logger.debug("[CONFIG] Loaded nodes and clients from config:");
+        networkNodes.values().forEach(node -> logger.debug("[CONFIG] server{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
+        networkClients.values().forEach(node -> logger.debug("[CONFIG] client{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
     }
 }

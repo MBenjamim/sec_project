@@ -1,5 +1,8 @@
 package main.java.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
@@ -8,6 +11,7 @@ import java.util.Properties;
  * Responsible for loading and parsing the configuration file.
  */
 public class ConfigLoader {
+    private static final Logger logger = LoggerFactory.getLogger(ConfigLoader.class);
 
     private static final String CONFIG_FILE = "config.cfg";
     private final Properties config;
@@ -28,8 +32,7 @@ public class ConfigLoader {
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
             config.load(fis);
         } catch (IOException e) {
-            System.err.println("[ERROR] Failed to load configuration file: " + CONFIG_FILE);
-            e.printStackTrace();
+            logger.error("Failed to load" + CONFIG_FILE + "configuration file", e);
         }
     }
 

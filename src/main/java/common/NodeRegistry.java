@@ -6,10 +6,14 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import main.java.crypto_utils.RSAKeyReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Getter
 @Setter
 public class NodeRegistry {
+    private static final Logger logger = LoggerFactory.getLogger(NodeRegistry.class);
+
     private static final String publicKeysDir = "public_keys/";
     private String ip;
     private int port;
@@ -46,7 +50,7 @@ public class NodeRegistry {
                 this.publicKey = RSAKeyReader.readPublicKey(publicKeysDir + type + id + "_public.key");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to read public key", e);
         }
         return publicKey;
     }

@@ -4,6 +4,8 @@ import main.java.common.KeyManager;
 import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.common.NodeRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -18,6 +20,8 @@ import java.security.SignatureException;
  * ensuring reliable message delivery.
  */
 public class ReliableLink {
+    private static final Logger logger = LoggerFactory.getLogger(ReliableLink.class);
+
     /**
      * Receives a message from a UDP socket and converts the received data into a Message object.
      *
@@ -53,12 +57,11 @@ public class ReliableLink {
     public static boolean verifyMessage(Message message, NodeRegistry sender, KeyManager km) {
         try {
             if (sender == null || !km.verifyMessage(message, sender)) {
-                System.err.println("[ERROR] Invalid message: " + message);
+                logger.error("Invalid message: {}", message);
                 return false;
             }
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            System.err.println("[ERROR] Failed to verify message");
-            e.printStackTrace();
+            logger.error("Failed to verify message", e);
             return false;
         }
         return true;
@@ -83,7 +86,7 @@ public class ReliableLink {
             // skip loop if ACK
             if (message.getType().equals(MessageType.ACK)) {
                 udpSocket.send(packet);
-                System.out.println("Sent " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
+                logger.debug("Sent {} message to {}:{}", message.getType(), node.getIp(), node.getPort());
                 return;
             }
 
@@ -92,27 +95,25 @@ public class ReliableLink {
 
             do {
                 if (relay > timeout) {
-                    System.err.println("[ERROR] Timed out waiting for ack for message to " + node.getIp() + ":" + node.getPort());
+                    logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
                 }
 
                 udpSocket.send(packet);
-                System.out.println("Sent " + message.getType() +
-                        " message to " + node.getIp() + ":" + node.getPort() + "\n" + "Message: " + message);
+                logger.debug("Sent {} message to {}:{}\nMessage: {}", message.getType(), node.getIp(), node.getPort(), message);
 
                 try {
                     relay++;
                     Thread.sleep(200L * relay);
                 } catch (InterruptedException e) {
-                    System.out.println("[ERROR] Wait interrupted: " + e.getMessage());
+                    logger.error("Wait interrupted: {}", e.getMessage());
                     Thread.currentThread().interrupt();
                 }
             } while (!node.checkAckedMessage(message.getId()));
 
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to send message to {}:{}", node.getIp(), node.getPort(), e);
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            System.err.println("[ERROR] Failed to sign message...");
-            e.printStackTrace();
+            logger.error("Failed to sign message", e);
         }
     }
 }

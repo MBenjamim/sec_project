@@ -5,12 +5,16 @@ import main.java.common.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a client in the blockchain network.
  * Listens from command line and send messages to the blockchain.
  */
 public class BlockchainClient {
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainClient.class);
+
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
 
     private final int port;
@@ -39,13 +43,13 @@ public class BlockchainClient {
      */
     public static void main(String[] args) {
         if (args.length != 2) {
-            System.err.println("Usage: java BlockchainClient <clientId> <serverPort>");
+            logger.error("Usage: java BlockchainClient <clientId> <serverPort>");
             System.exit(1);
         }
 
         int clientId = Integer.parseInt(args[0]);
         int port = Integer.parseInt(args[1]);
-        System.out.println("Initing Client with serverId: " + clientId + " and serverPort: " + port);
+        logger.info("Initing Client with serverId: {} and serverPort: {}", clientId, port);
         BlockchainClient client = new BlockchainClient(clientId, port);
         client.loadConfig();
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
@@ -64,7 +68,7 @@ public class BlockchainClient {
         while (true) {
             String input = scanner.nextLine().trim();
             if (input.equalsIgnoreCase("exit")) {
-                System.out.println("Exiting...");
+                logger.info("Exiting...");
                 System.exit(0);
                 break;
             }
@@ -74,7 +78,7 @@ public class BlockchainClient {
     }
 
     private void processInput(String input) {
-        System.out.println("Received input: " + input);
+        logger.debug("Received input: {}", input);
 
         // Create and send a message to each node with different IDs
         long messageId = networkManager.generateMessageId();
@@ -97,7 +101,7 @@ public class BlockchainClient {
             networkNodes.put(i, new NodeRegistry(i, "server", "localhost", port));
         }
 
-        System.out.println("[CONFIG] Loaded nodes from config:");
-        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        logger.debug("[CONFIG] Loaded nodes from config:");
+        networkNodes.values().forEach(node -> logger.debug("[CONFIG] {}{}: {}:{}", node.getType(), node.getId(), node.getIp(), node.getPort()));
     }
 }

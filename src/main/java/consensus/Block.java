@@ -6,12 +6,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
 
 @Getter
 @Setter
 public class Block {
+    private static final Logger logger = LoggerFactory.getLogger(Block.class);
+
+
     private final String value;
     private final int clientId;
 
@@ -35,7 +40,7 @@ public class Block {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.writeValueAsString(this);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert block to JSON", e);
             return null;
         }
     }
@@ -51,7 +56,7 @@ public class Block {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(json, Block.class);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert JSON to block", e);
             return null;
         }
     }
