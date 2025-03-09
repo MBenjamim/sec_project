@@ -50,7 +50,6 @@ public class BlockchainClient {
         client.loadConfig();
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
         client.start();
-
     }
 
     /**
@@ -61,29 +60,25 @@ public class BlockchainClient {
         networkManager.startClientCommunications(port, serverMessageHandler, networkNodes.values());
 
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter commands:");
 
         while (true) {
-            String input = scanner.nextLine();
+            String input = scanner.nextLine().trim();
             if (input.equalsIgnoreCase("exit")) {
                 System.out.println("Exiting...");
+                System.exit(0);
                 break;
             }
             // Process the received string
             processInput(input);
         }
-        scanner.close();
     }
 
     private void processInput(String input) {
         System.out.println("Received input: " + input);
 
         // Create and send a message to each node with different IDs
-        networkNodes.values().forEach(node -> {
-            long messageId = networkManager.generateMessageId();
-            Message message = new Message(messageId, MessageType.CLIENT_WRITE, id, input);
-            networkManager.sendMessageThread(message, node);
-        });
+        long messageId = networkManager.generateMessageId();
+        networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(messageId, MessageType.CLIENT_WRITE, id, input), node));
     }
 
     /**
