@@ -2,6 +2,7 @@ package main.java.signed_reliable_links;
 
 import main.java.common.KeyManager;
 import main.java.common.Message;
+import main.java.common.MessageType;
 import main.java.common.NodeRegistry;
 
 import java.io.IOException;
@@ -80,7 +81,7 @@ public class ReliableLink {
             DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
 
             // skip loop if ACK
-            if (message.getType().equals("ACK")) {
+            if (message.getType().equals(MessageType.ACK)) {
                 udpSocket.send(packet);
                 System.out.println("Sent " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
                 return;

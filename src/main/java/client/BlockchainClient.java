@@ -1,12 +1,10 @@
 package main.java.client;
 
-import main.java.common.ConfigLoader;
-import main.java.common.KeyManager;
-import main.java.common.NetworkManager;
-import main.java.common.NodeRegistry;
+import main.java.common.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 /**
  * Represents a client in the blockchain network.
@@ -15,7 +13,7 @@ import java.util.Map;
 public class BlockchainClient {
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
 
-    private final int serverPort;
+    private final int port;
     private final int id;
     private int timeout;
 
@@ -26,11 +24,11 @@ public class BlockchainClient {
      * Constructor for the BlockchainClient class.
      *
      * @param clientId   the unique identifier for the client
-     * @param serverPort the port number to communicate with servers
+     * @param port the port number to communicate with servers
      */
-    public BlockchainClient(int clientId, int serverPort) {
+    public BlockchainClient(int clientId, int port) {
         this.id = clientId;
-        this.serverPort = serverPort;
+        this.port = port;
         this.keyManager = new KeyManager(id, "client");
     }
 
@@ -45,21 +43,47 @@ public class BlockchainClient {
             System.exit(1);
         }
 
-        int serverId = Integer.parseInt(args[0]);
-        int serverPort = Integer.parseInt(args[1]);
-
-        BlockchainClient client = new BlockchainClient(serverId, serverPort);
+        int clientId = Integer.parseInt(args[0]);
+        int port = Integer.parseInt(args[1]);
+        System.out.println("Initing Client with serverId: " + clientId + " and serverPort: " + port);
+        BlockchainClient client = new BlockchainClient(clientId, port);
         client.loadConfig();
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
         client.start();
+
     }
 
     /**
      * Starts the client to listen for command line input and connections from blockchain members.
      */
     public void start() {
-        // MessageHandler handler = new MessageHandler();
-        // networkManager.startCommunications(serverPort);
+        ServerMessageHandler serverMessageHandler = new ServerMessageHandler(networkNodes, networkManager, keyManager);
+        networkManager.startClientCommunications(port, serverMessageHandler, networkNodes.values());
+
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter commands:");
+
+        while (true) {
+            String input = scanner.nextLine();
+            if (input.equalsIgnoreCase("exit")) {
+                System.out.println("Exiting...");
+                break;
+            }
+            // Process the received string
+            processInput(input);
+        }
+        scanner.close();
+    }
+
+    private void processInput(String input) {
+        System.out.println("Received input: " + input);
+
+        // Create and send a message to each node with different IDs
+        networkNodes.values().forEach(node -> {
+            long messageId = networkManager.generateMessageId();
+            Message message = new Message(messageId, MessageType.CLIENT_WRITE, id, input);
+            networkManager.sendMessageThread(message, node);
+        });
     }
 
     /**

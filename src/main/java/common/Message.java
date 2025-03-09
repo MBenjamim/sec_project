@@ -22,7 +22,7 @@ import java.util.Base64;
 public class Message {
     private long id;
     private int sender;
-    private String type;
+    private MessageType type;
     private String content;
     private boolean received;
 
@@ -37,7 +37,7 @@ public class Message {
      * @param type    the type of the message
      * @param sender  the unique identifier for the sender
      */
-    public Message(long id, String type, int sender) {
+    public Message(long id, MessageType type, int sender) {
         this.id = id;
         this.type = type;
         this.sender = sender;
@@ -53,7 +53,7 @@ public class Message {
      * @param sender  the unique identifier for the sender
      * @param content the content of the message
      */
-    public Message(long id, String type, int sender, String content) {
+    public Message(long id, MessageType type, int sender, String content) {
         this(id, type, sender);
         this.content = content;
     }

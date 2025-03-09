@@ -21,7 +21,7 @@ while the second stage will target the transaction processing layer.
 
 - Java 17 or higher
 - Maven
-- Tmux (for running multiple servers in separate windows)
+- Tmux (for running multiple servers in separate windows, how to use [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/))
 
 ## Configuration
 
@@ -46,9 +46,19 @@ BASE_PORT=5000
 ```
 
 3. **Run the Servers**\
-    Run the run_wsl.sh script to start the servers in separate Tmux windows:
+    Run the run_servers.sh script to start the servers in separate Tmux windows:\
+    To move between windows use `C-b n (Ctrl + B then N)`
+
 ```shell
-./run_wsl.sh
+./run_servers.sh
+```
+4. **Run the Clients**\
+   Run the run_servers.sh script to start the servers in separate Tmux windows:\
+   To move between windows use `C-b n (Ctrl + B then N)`
+
+```shell
+./run_clients.sh
+#write the string to put in the blockchain
 ```
 
 This script will start the first server in a new Tmux session and additional servers in separate Tmux windows.

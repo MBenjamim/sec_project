@@ -63,9 +63,9 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        NetworkServerHandler serverHandler = new NetworkServerHandler(networkNodes, networkManager, keyManager);
-        ClientHandler clientHandler = new ClientHandler(networkClients, networkManager, keyManager);
-        networkManager.startCommunications(serverPort, clientPort, serverHandler, clientHandler, networkNodes.values());
+        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager);
+        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
+        networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
     }
 
     /**

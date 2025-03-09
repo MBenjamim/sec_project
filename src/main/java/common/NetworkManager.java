@@ -29,10 +29,15 @@ public class NetworkManager {
         this.timeout = timeout;
     }
 
-    public void startCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
+    public void startServerCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
         startListeningForUDP(serverPort, handler1);
         initiateBlockchainNetwork(serverPort, nodes);
         startListeningForUDP(clientPort, handler2);
+    }
+
+    public void startClientCommunications(int port, MessageHandler handler, Collection<NodeRegistry> nodes) {
+        startListeningForUDP(port, handler);
+        initiateBlockchainNetwork(port, nodes);
     }
 
     /**
@@ -45,7 +50,7 @@ public class NetworkManager {
         for (NodeRegistry node : nodes) {
             if (node.getPort() == port)
                 continue;
-            sendMessageThread(new Message(messageId, "CONNECT", id), node);
+            sendMessageThread(new Message(messageId, MessageType.CONNECT, id), node);
         }
     }
 
