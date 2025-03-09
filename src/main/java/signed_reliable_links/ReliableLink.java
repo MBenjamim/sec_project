@@ -100,12 +100,12 @@ public class ReliableLink {
                         " message to " + node.getIp() + ":" + node.getPort() + "\n" + "Message: " + message);
 
                 try {
+                    relay++;
                     Thread.sleep(200L * relay);
                 } catch (InterruptedException e) {
                     System.out.println("[ERROR] Wait interrupted: " + e.getMessage());
                     Thread.currentThread().interrupt();
                 }
-                relay++;
             } while (!node.checkAckedMessage(message.getId()));
 
         } catch (IOException e) {
