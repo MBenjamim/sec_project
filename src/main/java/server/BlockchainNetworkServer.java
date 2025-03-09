@@ -2,8 +2,11 @@ package main.java.server;
 
 import main.java.common.ConfigLoader;
 import main.java.common.KeyManager;
+import main.java.common.Message;
 import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
+import main.java.consensus.ConsensusLoop;
+import lombok.Getter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +15,7 @@ import java.util.Map;
  * Represents a server in the blockchain network.
  * Listens for connections from clients and other blockchain members.
  */
+@Getter
 public class BlockchainNetworkServer {
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
     private final Map<Integer, NodeRegistry> networkClients = new HashMap<>();
@@ -20,8 +24,10 @@ public class BlockchainNetworkServer {
     private final int clientPort;
     private final int id;
     private int timeout;
+    private int leaderId;
 
     private final KeyManager keyManager;
+    private final ConsensusLoop consensusLoop;
     private NetworkManager networkManager;
 
     /**
@@ -36,6 +42,7 @@ public class BlockchainNetworkServer {
         this.serverPort = serverPort;
         this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
+        this.consensusLoop = new ConsensusLoop(this);
     }
 
     /**
@@ -56,6 +63,7 @@ public class BlockchainNetworkServer {
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort);
         server.loadConfig();
         server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
+
         server.start();
     }
 
@@ -63,7 +71,7 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager);
+        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
         ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
     }
@@ -80,6 +88,7 @@ public class BlockchainNetworkServer {
         int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
         this.timeout = config.getIntProperty("TIMEOUT");
+        this.leaderId = config.getIntProperty("LEADER_ID");
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
@@ -94,5 +103,14 @@ public class BlockchainNetworkServer {
         System.out.println("[CONFIG] Loaded nodes and clients from config:");
         networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
         networkClients.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+    }
+
+    public void sendConsensusResponse(Message message, int receiverId){
+        NodeRegistry receiver = networkNodes.get(receiverId);
+        networkManager.sendMessageThread(message, receiver);
+    }
+
+    public long generateMessageId() {
+        return networkManager.generateMessageId();
     }
 }

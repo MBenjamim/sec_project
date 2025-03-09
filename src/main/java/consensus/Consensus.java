@@ -7,20 +7,23 @@ import main.java.conditional_collect.ConditionalCollectImpl;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Decide the value to be appended to the blockchain across consensus epochs.
  */
+@Getter
+@Setter
 public class Consensus {
-    private final Map<Integer, Block> writeSet = new HashMap<>();
+    private final Map<Integer, ConsensusEpoch> epochs =  new HashMap<>();
+
     private final int N;      // Total number of processes
     private final int F;      // Fault tolerance threshold
+    private final int leaderId;
 
+    private final State state;
     private int timestamp;
-    private Block value;
-    private int valueTS;
-    private Map<Integer, Block> written;
-    private Map<Integer, Block> accepted;
-    private ConditionalCollect collector;
 
     /**
      * Constructor to initialize the Consensus with the total number of processes (N)
@@ -29,19 +32,12 @@ public class Consensus {
      * @param N Total number of processes
      * @param F Fault tolerance threshold
      */
-    public Consensus(int N, int F) {
+    public Consensus(int N, int F, int leaderId) {
         this.N = N;
         this.F = F;
-        this.timestamp = -1;
-        this.value = null;
-        this.valueTS = -1;
-    }
-
-    synchronized public void newEpoch() {
-        timestamp++;
-        written = new HashMap<>();
-        accepted = new HashMap<>();
-        collector = new ConditionalCollectImpl(N, F);
+        this.leaderId = leaderId;
+        this.timestamp = 0;
+        this.state = new State();
     }
     
     public void propose(Block value) { // or Message
@@ -56,20 +52,29 @@ public class Consensus {
         // send ABORT to every node (?including this?): use index to identify #decision and timestamp to identify #epoch
     }
 
-    public void collectRead(Message message) {
+    public void collectState(ConsensusMessage message) {
         // check if timestamp matches, if not ignore
         collector.addProposedValue(message.getSender(), message.getContent()); // FIXME
     }
 
-    public void collectWrite(Message message) {
+    public void collectWrite(ConsensusMessage message) {
         // check if timestamp matches, if not ignore
-        written.put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
+        state.getWriteSet().put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
         // check condition and send ACCEPT message
     }
 
-    public void collectAccept(Message message) {
+    public void collectAccept(ConsensusMessage message) {
         // check if timestamp matches, if not ignore
         accepted.put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
         // check condition and decide (end consensus instance)
     }
+
+    synchronized public ConsensusEpoch getConsensusEpoch(int index) {
+        if (!epochs.containsKey(index)) {
+            ConsensusEpoch epoch = new ConsensusEpoch(N, F, leaderId);
+            epochs.put(index, epoch);
+            return epoch;
+        }
+        return epochs.get(index);
+    } 
 }

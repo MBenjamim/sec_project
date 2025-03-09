@@ -1,6 +1,7 @@
 package main.java.server;
 
 import main.java.common.*;
+import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ public class NetworkServerMessageHandler implements MessageHandler {
     private final Map<Integer, NodeRegistry> networkNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
+    private final ConsensusLoop consensusLoop;
 
     /**
      * Constructor for the NodeHandler class.
@@ -20,10 +22,11 @@ public class NetworkServerMessageHandler implements MessageHandler {
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
      */
-    public NetworkServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager) {
+    public NetworkServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
         this.networkNodes = networkNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
+        this.consensusLoop = consensusLoop;
     }
 
     @Override
@@ -37,13 +40,22 @@ public class NetworkServerMessageHandler implements MessageHandler {
         }).start();
     }
 
+    public void acknowledgeMessage(Message message, NodeRegistry sender) {
+        networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+    }
+
     @Override
     public void processMessage(Message message, NodeRegistry sender) {
         System.out.println("Processing message: id:" + message.getId() + " content:" + "\"" + message.getContent() + "\"" + " type:" + message.getType() + " sender:" + sender.getType() + sender.getId());
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+                acknowledgeMessage(message, sender);
+                break;
+            case READ:
+                sender.addReceivedMessage(message.getId(), message);
+                acknowledgeMessage(message, sender);
+                //consensusLoop.processReadMessage(message);
                 break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
