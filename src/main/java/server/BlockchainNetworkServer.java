@@ -74,6 +74,7 @@ public class BlockchainNetworkServer {
         NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
         ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
+        consensusLoop.run();
     }
 
     /**
@@ -90,6 +91,7 @@ public class BlockchainNetworkServer {
 
         this.timeout = config.getIntProperty("TIMEOUT");
         ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
+        ConsensusLoop.setLeaderId(config.getIntProperty("LEADER_ID"));
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;

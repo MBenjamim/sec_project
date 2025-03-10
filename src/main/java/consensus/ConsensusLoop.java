@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.Getter;
+import lombok.Setter;
 import main.java.common.MessageType;
 import main.java.server.BlockchainNetworkServer;
 
@@ -17,6 +20,7 @@ public class ConsensusLoop implements Runnable {
     private final BlockchainNetworkServer server;
 
     private final int N; // Total number of processes (fault tolerance threshold can be calculated by (N - 1) / 3)
+    private static int leaderId;
     private long currIndex;
 
     public ConsensusLoop(BlockchainNetworkServer server) {
@@ -27,6 +31,7 @@ public class ConsensusLoop implements Runnable {
 
     @Override
     public void run() {
+        System.out.println("[CONSENSUS]: Loop Started");
         while (true) {
             this.doWork();
         }
@@ -112,12 +117,22 @@ public class ConsensusLoop implements Runnable {
      */
 
     public void doWork() {
-        // check if I am leader and if I have values to propose and if I am not in other instance
-
-        // then create a consensus instance for curr_index (if not already)
-        // and use that instance to propose the received value, if other processes did not have a proposed a value already
-
-        // else wait() until notify() when updating list/map of pending requests from clients
+         // check if I am leader and if I have values to propose and if I am not in other instance
+        if(leaderId == server.getId()){
+            System.out.println("[CONSENSUS]: I am leader");
+            // FIX ME
+            try {
+                while (true) {
+                    Thread.sleep(Long.MAX_VALUE); 
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+             // 
+            // then create a consensus instance for curr_index (if not already)
+            // and use that instance to propose the received value, if other processes did not have a proposed a value already
+        }
+        // else wait() until notify() when updating list/map of pending requests from clients 
     }
 
     synchronized public Consensus getConsensusInstance(long index) {
@@ -127,5 +142,15 @@ public class ConsensusLoop implements Runnable {
             return consensus;
         }
         return consensusInstances.get(index);
+    }
+
+    // Lombok does not directly support generating static getter and setter methods for static fields
+    public int getLeaderId() {
+        return leaderId;
+    }
+
+    // Lombok does not directly support generating static getter and setter methods for static fields
+    public static void setLeaderId(int leaderId) {
+        ConsensusLoop.leaderId = leaderId;
     }
 }
