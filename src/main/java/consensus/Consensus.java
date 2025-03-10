@@ -69,7 +69,11 @@ public class Consensus {
         return (!epoch.getCollector().isCollected() && collectedMessages.size() >= N - F);
     }
 
-    public Block determineValueToWrite(List<State> collectedStates) {
+    public Block determineValueToWrite(int epochTS, List<State> collectedStates) {
+        // if (epochTS < currTS) return false; // verified before
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        epoch.getCollector().markAsCollected();
+
         // TODO: deterministic choice of value
         return null;
     }

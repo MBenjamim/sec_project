@@ -20,7 +20,6 @@ public class ConsensusLoop implements Runnable {
     private final BlockchainNetworkServer server;
 
     private final int N; // Total number of processes (fault tolerance threshold can be calculated by (N - 1) / 3)
-    private static int leaderId;
     private long currIndex;
 
     public ConsensusLoop(BlockchainNetworkServer server) {
@@ -89,23 +88,25 @@ public class ConsensusLoop implements Runnable {
         }
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        if (collectedMessages == null || !consensus.verifyCollected(epochTS, collectedMessages))
+        if (collectedMessages == null || !consensus.verifyCollected(epochTS, collectedMessages)) {
             return;
+        }
 
         List<State> collectedStates = new ArrayList<>();
-        for (int serverId = 0; serverId < N; serverId++) {
-            ConsensusMessage collectedMessage = collectedMessages.get(serverId);
-            if (collectedMessage != null) {
-                try {
-                    server.getKeyManager().verifyMessage(collectedMessage, server.getNetworkNodes().get(serverId));
-                    collectedStates.add(State.fromJson(collectedMessage.getContent()));
-                } catch (Exception e) {
-                    e.printStackTrace();
+        for (Map.Entry<Integer, ConsensusMessage> entry : collectedMessages.entrySet()) {
+            int serverId = entry.getKey();
+            ConsensusMessage collectedMessage = entry.getValue();
+            try {
+                if (!server.getKeyManager().verifyMessage(collectedMessage, server.getNetworkNodes().get(serverId))) {
                     return;
                 }
+                collectedStates.add(State.fromJson(collectedMessage.getContent()));
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
             }
         }
-        consensus.determineValueToWrite(collectedStates);
+        consensus.determineValueToWrite(epochTS, collectedStates);
         // write || abort?
     }
 
@@ -142,15 +143,5 @@ public class ConsensusLoop implements Runnable {
             return consensus;
         }
         return consensusInstances.get(index);
-    }
-
-    // Lombok does not directly support generating static getter and setter methods for static fields
-    public int getLeaderId() {
-        return leaderId;
-    }
-
-    // Lombok does not directly support generating static getter and setter methods for static fields
-    public static void setLeaderId(int leaderId) {
-        ConsensusLoop.leaderId = leaderId;
     }
 }

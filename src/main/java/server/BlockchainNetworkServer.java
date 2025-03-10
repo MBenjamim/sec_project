@@ -91,7 +91,6 @@ public class BlockchainNetworkServer {
 
         this.timeout = config.getIntProperty("TIMEOUT");
         ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
-        ConsensusLoop.setLeaderId(config.getIntProperty("LEADER_ID"));
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
