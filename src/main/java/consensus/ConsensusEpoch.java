@@ -33,6 +33,10 @@ public class ConsensusEpoch {
         collector.addState(sender, state);
     }
 
+    public void addAccepted(ConsensusMessage message){
+        accepted.put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME  
+    }
+
     // Lombok does not directly support generating static getter and setter methods for static fields
     public int getLeaderId() {
         return leaderId;

@@ -81,8 +81,8 @@ public class Consensus {
     }
 
     public void collectAccept(ConsensusMessage message) {
-        // check if timestamp matches, if not ignore
-        accepted.put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
+        ConsensusEpoch epoch = getConsensusEpoch(message.getEpochTS());
+        epoch.addAccepted(message);
         // check condition and decide (end consensus instance)
     }
 
