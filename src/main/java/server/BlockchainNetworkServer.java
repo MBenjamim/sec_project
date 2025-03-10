@@ -5,6 +5,7 @@ import main.java.common.KeyManager;
 import main.java.common.Message;
 import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
+import main.java.consensus.ConsensusEpoch;
 import main.java.consensus.ConsensusLoop;
 import lombok.Getter;
 
@@ -24,7 +25,6 @@ public class BlockchainNetworkServer {
     private final int clientPort;
     private final int id;
     private int timeout;
-    private int leaderId;
 
     private final KeyManager keyManager;
     private final ConsensusLoop consensusLoop;
@@ -87,8 +87,9 @@ public class BlockchainNetworkServer {
         int numClients = config.getIntProperty("NUM_CLIENTS");
         int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
+
         this.timeout = config.getIntProperty("TIMEOUT");
-        this.leaderId = config.getIntProperty("LEADER_ID");
+        ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
@@ -110,7 +111,7 @@ public class BlockchainNetworkServer {
         networkManager.sendMessageThread(message, receiver);
     }
 
-    public long generateMessageId() {
+    synchronized public long generateMessageId() {
         return networkManager.generateMessageId();
     }
 }

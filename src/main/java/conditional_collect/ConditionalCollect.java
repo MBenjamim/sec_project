@@ -1,7 +1,5 @@
 package main.java.conditional_collect;
 
-import java.util.Map;
-
 import main.java.consensus.ConsensusMessage;
 
 /**
@@ -20,15 +18,19 @@ public interface ConditionalCollect {
     /**
      * Gets collected states if the number of states is greater than (N - F).
      *
-     * @return A json representation of a map conatining states
+     * @return A json representation of a map containing states
      */
     String collectValues();
 
     /**
-     * Checks if a value meets the specified condition.
+     * Checks if collector received enough and valid states
      *
-     * @param value The value to check
-     * @return True if the value meets the condition, false otherwise
+     * @return true if collected enough states
      */
-    boolean checkCondition(String value);
+    boolean isCollected();
+
+    /**
+     * Mark as collected after received enough and valid states.
+     */
+    void markAsCollected();
 }

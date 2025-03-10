@@ -79,8 +79,7 @@ public class NetworkManager {
     }
 
     /**
-     * Sends a message using authenticated reliable links abstraction
-     * in a separate thread.
+     * Sends a message using authenticated reliable links abstraction in a separate thread.
      *
      * @param message the message to send
      * @param node    the node to send the message to
@@ -90,6 +89,15 @@ public class NetworkManager {
             System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
             ReliableLink.sendMessage(message, node, keyManager, timeout);
         }).start();
+    }
+
+    /**
+     * Acknowledges a message in a separate thread.
+     * @param message  the received message to ack
+     * @param sender   the sender of original message (will be receiver of the ack)
+     */
+    public void acknowledgeMessage(Message message, NodeRegistry sender) {
+        sendMessageThread(new Message(message.getId(), MessageType.ACK, id), sender);
     }
 
     /**

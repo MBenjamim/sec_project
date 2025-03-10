@@ -14,8 +14,9 @@ import main.java.consensus.ConsensusMessage;
  */
 public class ConditionalCollectImpl implements ConditionalCollect {
     private Map<Integer, ConsensusMessage> states = new HashMap<>();
-    private int N; // Total number of processes
-    private int F; // Fault tolerance threshold
+    private final int N; // Total number of processes
+    private final int F; // Fault tolerance threshold
+    private boolean collected;
 
     /**
      * Constructor to initialize the ConditionalCollectImpl with the total number of processes (N)
@@ -27,20 +28,24 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     public ConditionalCollectImpl(int N, int F) {
         this.N = N;
         this.F = F;
+        collected = false;
     }
 
     @Override
     synchronized public void addState(int processId, ConsensusMessage value) {
-        states.put(processId, value);
+        if (!collected) {
+            states.put(processId, value);
+        }
     }
 
     @Override
     synchronized public String collectValues() {
+        if (collected) return null;
         if (this.states.size() >= N - F) {
             try {
                 ObjectMapper objectMapper = new ObjectMapper();
                 String jsonString = objectMapper.writeValueAsString(states);
-                this.states = new HashMap<>();
+                this.states = new HashMap<>(); // reset collected states
                 return jsonString;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -48,6 +53,16 @@ public class ConditionalCollectImpl implements ConditionalCollect {
             }
         }
         return null;
+    }
+
+    @Override
+    synchronized public boolean isCollected() {
+        return collected;
+    }
+
+    @Override
+    synchronized public void markAsCollected() {
+        collected = true;
     }
     /* synchronized public Map<Integer, ConsensusMessage> collectValues() {
         Map<Integer, ConsensusMessage> collectedValues = new HashMap<>();
@@ -61,8 +76,8 @@ public class ConditionalCollectImpl implements ConditionalCollect {
         return collectedValues;
     } */
 
-    @Override
+    /* @Override
     public boolean checkCondition(String value) {
         return value != null && !value.isEmpty();
-    }
+    } */
 }

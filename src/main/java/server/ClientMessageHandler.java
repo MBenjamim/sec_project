@@ -43,7 +43,7 @@ public class ClientMessageHandler implements MessageHandler {
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+                networkManager.acknowledgeMessage(message, sender);
                 break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
@@ -51,7 +51,7 @@ public class ClientMessageHandler implements MessageHandler {
                 break;
             case CLIENT_WRITE:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+                networkManager.acknowledgeMessage(message, sender);
                 //TODO process client write
                 break;
             default:

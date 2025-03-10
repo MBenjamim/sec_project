@@ -13,7 +13,6 @@ public class ServerMessageHandler implements MessageHandler {
     private final Map<Integer, NodeRegistry> networkNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
-    private final ConsensusLoop consensusLoop;
 
     /**
      * Constructor for the NodeHandler class.
@@ -22,11 +21,10 @@ public class ServerMessageHandler implements MessageHandler {
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
      */
-    public ServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
+    public ServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager) {
         this.networkNodes = networkNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
-        this.consensusLoop = consensusLoop;
     }
 
     @Override
@@ -40,17 +38,13 @@ public class ServerMessageHandler implements MessageHandler {
         }).start();
     }
 
-    public void acknowledgedMessage(Message message, NodeRegistry sender) {
-        networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
-    }
-
     @Override
     public void processMessage(Message message, NodeRegistry sender) {
         System.out.println("Processing message: id:" + message.getId() + " content:" + "\"" + message.getContent() + "\"" + " type:" + message.getType() + " sender:" + sender.getType() + sender.getId());
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                acknowledgedMessage(message, sender);
+                networkManager.acknowledgeMessage(message, sender);
                 break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);

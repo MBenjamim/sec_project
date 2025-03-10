@@ -2,6 +2,7 @@ package main.java.server;
 
 import main.java.common.*;
 import main.java.consensus.ConsensusLoop;
+import main.java.consensus.ConsensusMessage;
 import main.java.signed_reliable_links.ReliableLink;
 
 import java.util.Map;
@@ -40,23 +41,23 @@ public class NetworkServerMessageHandler implements MessageHandler {
         }).start();
     }
 
-    public void acknowledgeMessage(Message message, NodeRegistry sender) {
-        networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
-    }
-
     @Override
     public void processMessage(Message message, NodeRegistry sender) {
         System.out.println("Processing message: id:" + message.getId() + " content:" + "\"" + message.getContent() + "\"" + " type:" + message.getType() + " sender:" + sender.getType() + sender.getId());
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                acknowledgeMessage(message, sender);
+                networkManager.acknowledgeMessage(message, sender);
                 break;
             case READ:
                 sender.addReceivedMessage(message.getId(), message);
-                acknowledgeMessage(message, sender);
-                //consensusLoop.processReadMessage(message);
+                networkManager.acknowledgeMessage(message, sender);
+                consensusLoop.processReadMessage((ConsensusMessage) message);
                 break;
+            case STATE:
+                sender.addReceivedMessage(message.getId(), message);
+                networkManager.acknowledgeMessage(message, sender);
+                consensusLoop.processStateMessage((ConsensusMessage) message);
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
                 sender.ackMessage(message.getId());

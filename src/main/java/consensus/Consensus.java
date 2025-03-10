@@ -1,10 +1,7 @@
 package main.java.consensus;
 
-import main.java.common.Message;
-import main.java.conditional_collect.ConditionalCollect;
-import main.java.conditional_collect.ConditionalCollectImpl;
-
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import lombok.Getter;
@@ -18,25 +15,20 @@ import lombok.Setter;
 public class Consensus {
     private final Map<Integer, ConsensusEpoch> epochs =  new HashMap<>();
 
-    private final int N;      // Total number of processes
-    private final int F;      // Fault tolerance threshold
-    private final int leaderId;
-
     private final State state;
-    private int timestamp;
+    private final int N; // Total number of processes
+    private final int F; // Fault tolerance threshold
+    private int currTS;
 
     /**
-     * Constructor to initialize the Consensus with the total number of processes (N)
-     * and the fault tolerance threshold (F).
+     * Constructor to initialize the Consensus with the total number of processes and leader identifier.
      *
      * @param N Total number of processes
-     * @param F Fault tolerance threshold
      */
-    public Consensus(int N, int F, int leaderId) {
+    public Consensus(int N) {
         this.N = N;
-        this.F = F;
-        this.leaderId = leaderId;
-        this.timestamp = 0;
+        this.F = (N - 1) / 3;
+        this.currTS = 0;
         this.state = new State();
     }
     
@@ -52,9 +44,34 @@ public class Consensus {
         // send ABORT to every node (?including this?): use index to identify #decision and timestamp to identify #epoch
     }
 
-    public void collectState(ConsensusMessage message) {
-        // check if timestamp matches, if not ignore
-        collector.addProposedValue(message.getSender(), message.getContent()); // FIXME
+    public State checkLeaderAndGetState(int epochTS, int leaderId) {
+        if (epochTS < currTS) return null;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        return (epoch.getLeaderId() == leaderId) ? state : null;
+    }
+
+    public String collectStateAndGetIfEnough(int epochTS, ConsensusMessage stateSigned, int serverId) {
+        if (epochTS < currTS) return null;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        if (epoch.getLeaderId() == serverId) {  // only if this server is leader for that epoch
+            epoch.addToCollector(stateSigned.getSender(), stateSigned);
+            return epoch.getCollector().collectValues();
+        }
+        return null;
+    }
+
+    public boolean verifyCollected(int epochTS, Map<Integer, ConsensusMessage> collectedMessages) {
+        if (epochTS < currTS) return false;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        return (!epoch.getCollector().isCollected() && collectedMessages.size() >= N - F);
+    }
+
+    public Block determineValueToWrite(List<State> collectedStates) {
+        // TODO: deterministic choice of value
+        return null;
     }
 
     public void collectWrite(ConsensusMessage message) {
@@ -71,7 +88,7 @@ public class Consensus {
 
     synchronized public ConsensusEpoch getConsensusEpoch(int index) {
         if (!epochs.containsKey(index)) {
-            ConsensusEpoch epoch = new ConsensusEpoch(N, F, leaderId);
+            ConsensusEpoch epoch = new ConsensusEpoch(N, F);
             epochs.put(index, epoch);
             return epoch;
         }
