@@ -59,6 +59,7 @@ public class NetworkServerMessageHandler implements MessageHandler {
                 sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
                 consensusLoop.processStateMessage((ConsensusMessage) message);
+                break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
                 sender.ackMessage(message.getId());

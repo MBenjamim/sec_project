@@ -116,7 +116,7 @@ public class BlockchainNetworkServer {
         networkManager.sendMessageThread(message, receiver);
     }
 
-    public void broadcastConsenusResponse(long consensusIdx, int epochTS, MessageType type, String content) {
+    public void broadcastConsensusResponse(long consensusIdx, int epochTS, MessageType type, String content) {
         for (NodeRegistry node : networkNodes.values()) {
             ConsensusMessage message = new ConsensusMessage(generateMessageId(), type, id, content, consensusIdx, epochTS);
             networkManager.sendMessageThread(message, node);

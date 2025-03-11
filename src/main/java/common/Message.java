@@ -22,8 +22,7 @@ import java.util.Base64;
 @AllArgsConstructor
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.CLASS,
-    include = JsonTypeInfo.As.PROPERTY,
-    property = "@class"
+        property = "@class"
 )
 public class Message {
     private long id;

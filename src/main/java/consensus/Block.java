@@ -79,6 +79,7 @@ public class Block {
      *
      * @return the Base64 encoded string representation of the signature
      */
+    @JsonIgnore // for now
     @JsonProperty("signature")
     public String getSignatureBase64() {
         return Base64.getEncoder().encodeToString(clientSignature);
@@ -89,6 +90,7 @@ public class Block {
      *
      * @param signatureBase64 the Base64 encoded string representation of the signature
      */
+    @JsonIgnore // for now
     @JsonProperty("signature")
     public void setSignatureBase64(String signatureBase64) {
         this.clientSignature = Base64.getDecoder().decode(signatureBase64);

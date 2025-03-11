@@ -49,7 +49,7 @@ public class ServerMessageHandler implements MessageHandler {
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
                 sender.ackMessage(message.getId());
-                break;    
+                break;
             default:
                 System.out.println("Unknown message type: " + message.getType());
                 break;

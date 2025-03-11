@@ -9,12 +9,13 @@ import lombok.ToString;
 import main.java.common.Message;
 import main.java.common.MessageType;
 
+
 /**
  * Represents a consensus message in the blockchain network.
  */
 @Getter
 @Setter
-@ToString
+@ToString(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConsensusMessage extends Message  {

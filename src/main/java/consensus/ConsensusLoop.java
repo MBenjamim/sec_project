@@ -121,7 +121,7 @@ public class ConsensusLoop implements Runnable {
         if (toWrite == null) {
             //FIXME: abort
         } else {
-            server.broadcastConsenusResponse(consensusIndex, epochTS, MessageType.WRITE, toWrite.toJson());
+            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.WRITE, toWrite.toJson());
         }
     }
 
@@ -157,7 +157,7 @@ public class ConsensusLoop implements Runnable {
         Consensus consensus = getConsensusInstance(currIndex);
         int epochTS = consensus.proposeToEpoch(requests.get(0));
         inConsensus = true;
-        server.broadcastConsenusResponse(currIndex, epochTS, MessageType.READ, "");
+        server.broadcastConsensusResponse(currIndex, epochTS, MessageType.READ, "");
     }
 
     // check if I am leader and if I have values to propose and if I am not in other instance
