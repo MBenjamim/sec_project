@@ -1,6 +1,7 @@
 package main.java.server;
 
 import main.java.common.*;
+import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ public class ClientMessageHandler implements MessageHandler {
     private final Map<Integer, NodeRegistry> clientNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
+    private final ConsensusLoop consensusLoop;
 
     /**
      * Constructor for the ClientMessageHandler class.
@@ -19,11 +21,13 @@ public class ClientMessageHandler implements MessageHandler {
      * @param clientNodes    keep track of nodes and their message history
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
+     * @param consensusLoop  to request a block to be added to the blockchain
      */
-    public ClientMessageHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager) {
+    public ClientMessageHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
         this.clientNodes = clientNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
+        this.consensusLoop = consensusLoop;
     }
 
     @Override
@@ -52,7 +56,7 @@ public class ClientMessageHandler implements MessageHandler {
             case CLIENT_WRITE:
                 sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
-                //TODO process client write
+                consensusLoop.addRequest(message);
                 break;
             default:
                 System.out.println("Unknown message type: " + message.getType());

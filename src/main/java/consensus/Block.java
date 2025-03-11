@@ -19,10 +19,10 @@ public class Block {
     @ToString.Exclude
     private byte[] clientSignature;
 
-    public Block(String value, int clientId, byte[] clientSignature) {
+    public Block(String value, int clientId) {
         this.value = value;
         this.clientId = clientId;
-        this.clientSignature = clientSignature;
+        //this.clientSignature = clientSignature;
     }
 
     public boolean checkValid(int nrClients) {

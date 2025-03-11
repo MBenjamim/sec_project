@@ -22,6 +22,7 @@ public class NetworkServerMessageHandler implements MessageHandler {
      * @param networkNodes   keep track of nodes and their message history
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
+     * @param consensusLoop  to eventually agree on a block to be added to the blockchain
      */
     public NetworkServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
         this.networkNodes = networkNodes;

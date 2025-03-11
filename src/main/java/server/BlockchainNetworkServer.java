@@ -76,7 +76,7 @@ public class BlockchainNetworkServer {
      */
     public void start() {
         NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
-        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
+        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager, consensusLoop);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
         consensusThread.start();
     }

@@ -1,6 +1,5 @@
 package main.java.consensus;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +80,7 @@ public class Consensus {
      * 
      * @param epochTS The timestamp of the epoch to check.
      * @param leaderId The ID of the leader to verify.
-     * @return The current state if the leader ID matches the leader of the given epoch, false otherwise.
+     * @return The current state if the leader ID matches the leader of the given epoch, null otherwise.
      */
     public State checkLeaderAndGetState(int epochTS, int leaderId) {
         return checkLeader(epochTS, leaderId) ? state : null;
@@ -89,9 +88,9 @@ public class Consensus {
 
     /**
      * Used only by LEADER upon receiving STATE message and to send COLLECTED message.
-     * Check if this process is the leader that already broadcast READ messages,
+     * Check if this process is the leader that already broadcast read messages,
      * if so adds this state to the collected ones.
-     * Then checks if have received enough STATE messages,
+     * Then checks if collector has received enough STATE messages,
      * if so returns the map of collected states.
      * 
      * @param epochTS     The timestamp of the epoch to receive the STATE message
@@ -102,7 +101,7 @@ public class Consensus {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
-        if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {  // only if this server is leader for that epoch
+        if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {  // this server is the leader of this epoch and sent READ messages before
             epoch.addToCollector(stateSigned.getSender(), stateSigned);
             return epoch.getCollector().collectValues();
         }
@@ -110,20 +109,18 @@ public class Consensus {
     }
 
     /**
-     * 
-     * Parsing of a COLLECTOR message
-     * 
+     * Used upon receiving COLLECTED message.
+     *
      * @param epochTS
      * @param leaderId
      * @param jsonString collect message content
      * @return ConsensusMessage map
      */
-
     public Map<Integer, ConsensusMessage> getCollectedMessages(int epochTS, int leaderId, String jsonString) {
         if (epochTS < currTS || !checkLeader(epochTS, leaderId)) return null;
 
         // Get map of collected messages from json string
-        Map<Integer, ConsensusMessage> collectedMessages = null;
+        Map<Integer, ConsensusMessage> collectedMessages;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             collectedMessages = objectMapper.readValue(jsonString, Map.class);
@@ -141,7 +138,7 @@ public class Consensus {
 
     /**
      * 
-     * Deterministic process to determin the value to assigne to a WRITE message,
+     * Deterministic process to determinate the value to assign to a WRITE message,
      * given a collection of states
      * 
      * @param epochTS
@@ -150,7 +147,6 @@ public class Consensus {
      * @param nrClients
      * @return Block
      */
-
     public Block determineValueToWrite(int epochTS, List<State> collectedStates, State leaderState, int nrClients) {
         // if (epochTS < currTS) return null; // verified before using checkLeader()
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
@@ -197,13 +193,13 @@ public class Consensus {
 
     public void collectWrite(ConsensusMessage message) {
         // check if timestamp matches, if not ignore
-        state.getWriteSet().put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
+        //state.getWriteSet().put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
         // check condition and send ACCEPT message
     }
 
     public void collectAccept(ConsensusMessage message) {
-        ConsensusEpoch epoch = getConsensusEpoch(message.getEpochTS());
-        epoch.addAccepted(message);
+        //ConsensusEpoch epoch = getConsensusEpoch(message.getEpochTS());
+        //epoch.addAccepted(message);
         // check condition and decide (end consensus instance)
     }
 

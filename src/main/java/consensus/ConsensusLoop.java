@@ -4,12 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.Getter;
-import lombok.Setter;
+import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.server.BlockchainNetworkServer;
 
@@ -40,9 +36,8 @@ public class ConsensusLoop implements Runnable {
         }
     }
 
-
     /**
-     * Process a READ message received from a server (it should be the leader)
+     * Process a READ message received from a server (it should be the leader).
      *
      * @param message the message to be processed
      */
@@ -84,10 +79,11 @@ public class ConsensusLoop implements Runnable {
             }
         }
     }
+
     /**
-     * Process a COLLECTED message received from a server should be send by leader.
+     * Process a COLLECTED message received from a server should be sent by leader.
      * 
-     * @param message
+     * @param message the message to be processed
      */
     synchronized public void processCollectedMessage(ConsensusMessage message) {
         long consensusIndex = message.getConsensusIdx();
@@ -136,17 +132,21 @@ public class ConsensusLoop implements Runnable {
          be accessible and shared between ConsensusLoop and ServerHandler)
      */
 
-    /**
-     * TODO
-     * things that never happen given that I am the leader:
+    /* TODO: things that never happen given that I am the leader:
      *  - cannot receive STATE (and future messages) before sending READs
      *  - cannot receive WRITE / ACCEPT before sending COLLECTED
      */
 
+    /**
+     * Waits for new requests from clients and for the end of previous consensus instance.
+     * When conditions are met (including being leader for the specified epoch of consensus),
+     * the leader starts (propose) a new consensus epoch for the current instance,
+     * broadcasting READ messages.
+     */
     synchronized public void doWork() {
         while (getWaitCondition()) { //is leader && not in other instance
             try {
-                requests.wait(); // Wait until a task is added
+                wait(); // wait until condition is met
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
@@ -161,6 +161,14 @@ public class ConsensusLoop implements Runnable {
     }
 
     // check if I am leader and if I have values to propose and if I am not in other instance
+
+    /**
+     * Check if this process is in a consensus instance,
+     * or has no client requests to be processed,
+     * or is not the leader for the current epoch of consensus instance
+     *
+     * @return true if conditions are met
+     */
     private boolean getWaitCondition() {
         Consensus consensus = getConsensusInstance(currIndex);
         return inConsensus || requests.isEmpty()
@@ -175,8 +183,8 @@ public class ConsensusLoop implements Runnable {
     /**
      * Returns the consensus instance for the given index. Creates it if it does not exist.
      * 
-     * @param index
-     * @return
+     * @param index The index of consensus instance
+     * @return The consensus instance that exists or was created
      */
     synchronized public Consensus getConsensusInstance(long index) {
         if (!consensusInstances.containsKey(index)) {
@@ -188,14 +196,14 @@ public class ConsensusLoop implements Runnable {
     }
 
     /**
-     * Adds a request to be processed.
+     * Adds a client request to be processed.
      * 
-     * @param request
+     * @param requestMessage The message containing the request to be processed
      */
-    synchronized public void addRequest(Block request) {
-        requests.add(request);
+    synchronized public void addRequest(Message requestMessage) {
+        if (requestMessage.getContent().isBlank()) return;
+        requests.add(new Block(requestMessage.getContent(), requestMessage.getSender()));
         wakeup();
     }
 
-    
 }
