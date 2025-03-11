@@ -23,6 +23,9 @@ public class ConsensusEpoch {
     private final int F; // Fault tolerance threshold
     private ConditionalCollect collector;
 
+    private boolean sentRead = false;
+    private boolean sentCollected = false;
+
     public ConsensusEpoch(int N, int F) {
         this.N = N;
         this.F = F;

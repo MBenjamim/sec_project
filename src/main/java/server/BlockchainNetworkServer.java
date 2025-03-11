@@ -3,10 +3,12 @@ package main.java.server;
 import main.java.common.ConfigLoader;
 import main.java.common.KeyManager;
 import main.java.common.Message;
+import main.java.common.MessageType;
 import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
 import main.java.consensus.ConsensusEpoch;
 import main.java.consensus.ConsensusLoop;
+import main.java.consensus.ConsensusMessage;
 import lombok.Getter;
 
 import java.util.HashMap;
@@ -28,6 +30,7 @@ public class BlockchainNetworkServer {
 
     private final KeyManager keyManager;
     private final ConsensusLoop consensusLoop;
+    private final Thread consensusThread;
     private NetworkManager networkManager;
 
     /**
@@ -43,6 +46,7 @@ public class BlockchainNetworkServer {
         this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
         this.consensusLoop = new ConsensusLoop(this);
+        this.consensusThread = new Thread(consensusLoop);
     }
 
     /**
@@ -74,7 +78,7 @@ public class BlockchainNetworkServer {
         NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
         ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
-        consensusLoop.run();
+        consensusThread.start();
     }
 
     /**
@@ -110,6 +114,13 @@ public class BlockchainNetworkServer {
     public void sendConsensusResponse(Message message, int receiverId){
         NodeRegistry receiver = networkNodes.get(receiverId);
         networkManager.sendMessageThread(message, receiver);
+    }
+
+    public void broadcastConsenusResponse(long consensusIdx, int epochTS, MessageType type, String content) {
+        for (NodeRegistry node : networkNodes.values()) {
+            ConsensusMessage message = new ConsensusMessage(generateMessageId(), type, id, content, consensusIdx, epochTS);
+            networkManager.sendMessageThread(message, node);
+        }
     }
 
     synchronized public long generateMessageId() {

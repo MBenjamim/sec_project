@@ -25,6 +25,24 @@ public class Block {
         this.clientSignature = clientSignature;
     }
 
+    public boolean checkValid(int nrClients) {
+        return value != null && !value.isBlank() && clientId > 0 && clientId < nrClients;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Block block = (Block) o;
+        return value.equals(block.value) && clientId == block.clientId;
+    }
+
     /**
      * Converts the Block to a JSON string.
      *
