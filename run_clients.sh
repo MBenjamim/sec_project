@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source load_config_and_compile.sh
+source config.cfg
 
 LOG_LEVEL="info"
 if [[ "$1" == "-DEBUG" ]]; then

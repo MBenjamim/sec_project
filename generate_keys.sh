@@ -1,6 +1,11 @@
 #!/bin/bash
 
-source load_config_and_compile.sh
+source config.cfg
+
+LOG_LEVEL="info"
+if [[ "$1" == "-DEBUG" ]]; then
+    LOG_LEVEL="debug"
+fi
 
 # Function to generate and distribute keys
 generate_and_copy_keys() {
@@ -11,7 +16,7 @@ generate_and_copy_keys() {
     mkdir -p "$DIR_NAME"
 
     # Run the Java key generator
-    java -cp target/classes main.java.crypto_utils.RSAKeyGenerator "$PRIV_KEY_PATH" "$PUB_KEY_PATH"
+    mvn exec:java -Dexec.mainClass=main.java.crypto_utils.RSAKeyGenerator -Dexec.args="$PRIV_KEY_PATH $PUB_KEY_PATH" -DLOG_LEVEL=$LOG_LEVEL
 
     # Verify key generation
     if [ ! -f "$PRIV_KEY_PATH" ] || [ ! -f "$PUB_KEY_PATH" ]; then

@@ -24,10 +24,28 @@ public class Block {
     @ToString.Exclude
     private byte[] clientSignature;
 
-    public Block(String value, int clientId, byte[] clientSignature) {
+    public Block(String value, int clientId) {
         this.value = value;
         this.clientId = clientId;
-        this.clientSignature = clientSignature;
+        //this.clientSignature = clientSignature;
+    }
+
+    public boolean checkValid(int nrClients) {
+        return value != null && !value.isBlank() && clientId > 0 && clientId < nrClients;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Block block = (Block) o;
+        return value.equals(block.value) && clientId == block.clientId;
     }
 
     /**
@@ -66,6 +84,7 @@ public class Block {
      *
      * @return the Base64 encoded string representation of the signature
      */
+    @JsonIgnore // for now
     @JsonProperty("signature")
     public String getSignatureBase64() {
         return Base64.getEncoder().encodeToString(clientSignature);
@@ -76,6 +95,7 @@ public class Block {
      *
      * @param signatureBase64 the Base64 encoded string representation of the signature
      */
+    @JsonIgnore // for now
     @JsonProperty("signature")
     public void setSignatureBase64(String signatureBase64) {
         this.clientSignature = Base64.getDecoder().decode(signatureBase64);

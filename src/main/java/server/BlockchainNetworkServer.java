@@ -2,8 +2,14 @@ package main.java.server;
 
 import main.java.common.ConfigLoader;
 import main.java.common.KeyManager;
+import main.java.common.Message;
+import main.java.common.MessageType;
 import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
+import main.java.consensus.ConsensusEpoch;
+import main.java.consensus.ConsensusLoop;
+import main.java.consensus.ConsensusMessage;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +20,7 @@ import java.util.Map;
  * Represents a server in the blockchain network.
  * Listens for connections from clients and other blockchain members.
  */
+@Getter
 public class BlockchainNetworkServer {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainNetworkServer.class);
 
@@ -26,6 +33,8 @@ public class BlockchainNetworkServer {
     private int timeout;
 
     private final KeyManager keyManager;
+    private final ConsensusLoop consensusLoop;
+    private final Thread consensusThread;
     private NetworkManager networkManager;
 
     /**
@@ -40,6 +49,8 @@ public class BlockchainNetworkServer {
         this.serverPort = serverPort;
         this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
+        this.consensusLoop = new ConsensusLoop(this);
+        this.consensusThread = new Thread(consensusLoop);
     }
 
     /**
@@ -67,9 +78,10 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager);
-        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager);
+        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
+        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager, consensusLoop);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
+        consensusThread.start();
     }
 
     /**
@@ -83,7 +95,9 @@ public class BlockchainNetworkServer {
         int numClients = config.getIntProperty("NUM_CLIENTS");
         int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
+
         this.timeout = config.getIntProperty("TIMEOUT");
+        ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
 
         for (int i = 0; i < numServers; i++) {
             int port = basePortServers + i;
@@ -98,5 +112,21 @@ public class BlockchainNetworkServer {
         logger.debug("[CONFIG] Loaded nodes and clients from config:");
         networkNodes.values().forEach(node -> logger.debug("[CONFIG] server{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
         networkClients.values().forEach(node -> logger.debug("[CONFIG] client{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
+    }
+
+    public void sendConsensusResponse(Message message, int receiverId){
+        NodeRegistry receiver = networkNodes.get(receiverId);
+        networkManager.sendMessageThread(message, receiver);
+    }
+
+    public void broadcastConsensusResponse(long consensusIdx, int epochTS, MessageType type, String content) {
+        for (NodeRegistry node : networkNodes.values()) {
+            ConsensusMessage message = new ConsensusMessage(generateMessageId(), type, id, content, consensusIdx, epochTS);
+            networkManager.sendMessageThread(message, node);
+        }
+    }
+
+    synchronized public long generateMessageId() {
+        return networkManager.generateMessageId();
     }
 }

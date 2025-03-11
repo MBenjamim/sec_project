@@ -1,6 +1,6 @@
 package main.java.conditional_collect;
 
-import java.util.Map;
+import main.java.consensus.ConsensusMessage;
 
 /**
  * Interface for collecting proposed values from different processes
@@ -8,25 +8,29 @@ import java.util.Map;
  */
 public interface ConditionalCollect {
     /**
-     * Adds a proposed value from a process to the collection.
+     * Adds a process state and its signature to the collection.
      *
-     * @param processId The ID of the process proposing the value
-     * @param value The proposed value
+     * @param processId The ID of the process
+     * @param value     The process state and signature
      */
-    void addProposedValue(int processId, String value);
+    void addState(int processId, ConsensusMessage value);
 
     /**
-     * Collects values from the proposed values that meet the specified condition.
+     * Gets collected states if the number of states is greater than (N - F).
      *
-     * @return A map of process IDs to their collected values
+     * @return A json representation of a map containing states
      */
-    Map<Integer, String> collectValues();
+    String collectValues();
 
     /**
-     * Checks if a value meets the specified condition.
+     * Checks if collector received enough and valid states
      *
-     * @param value The value to check
-     * @return True if the value meets the condition, false otherwise
+     * @return true if collected enough states
      */
-    boolean checkCondition(String value);
+    boolean isCollected();
+
+    /**
+     * Mark as collected after received enough and valid states.
+     */
+    void markAsCollected();
 }

@@ -1,6 +1,7 @@
 package main.java.client;
 
 import main.java.common.*;
+import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class ServerMessageHandler implements MessageHandler {
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+                networkManager.acknowledgeMessage(message, sender);
                 break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);

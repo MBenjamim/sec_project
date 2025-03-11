@@ -1,6 +1,7 @@
 package main.java.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
@@ -21,6 +22,10 @@ import java.util.Base64;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.CLASS,
+        property = "@class"
+)
 public class Message {
     private static final Logger logger = LoggerFactory.getLogger(Message.class);
 

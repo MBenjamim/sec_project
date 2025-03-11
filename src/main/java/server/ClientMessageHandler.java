@@ -1,6 +1,7 @@
 package main.java.server;
 
 import main.java.common.*;
+import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ public class ClientMessageHandler implements MessageHandler {
     private final Map<Integer, NodeRegistry> clientNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
+    private final ConsensusLoop consensusLoop;
 
     /**
      * Constructor for the ClientMessageHandler class.
@@ -23,11 +25,13 @@ public class ClientMessageHandler implements MessageHandler {
      * @param clientNodes    keep track of nodes and their message history
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
+     * @param consensusLoop  to request a block to be added to the blockchain
      */
-    public ClientMessageHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager) {
+    public ClientMessageHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
         this.clientNodes = clientNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
+        this.consensusLoop = consensusLoop;
     }
 
     @Override
@@ -47,7 +51,7 @@ public class ClientMessageHandler implements MessageHandler {
         switch (message.getType()) {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
+                networkManager.acknowledgeMessage(message, sender);
                 break;
             case ACK:
                 sender.addReceivedMessage(message.getId(), message);
@@ -55,8 +59,8 @@ public class ClientMessageHandler implements MessageHandler {
                 break;
             case CLIENT_WRITE:
                 sender.addReceivedMessage(message.getId(), message);
-                networkManager.sendMessageThread(new Message(message.getId(), MessageType.ACK, networkManager.getId()), sender);
-                //TODO process client write
+                networkManager.acknowledgeMessage(message, sender);
+                consensusLoop.addRequest(message);
                 break;
             default:
                 logger.error("Unknown message type: {}", message.getType());
