@@ -66,22 +66,28 @@ public class NodeRegistry {
     }
 
      /**
-     * Adds a received message to the receivedMessages map.
-     *
-     * @param id      the unique identifier for the message
-     * @param message the message to be added
+      * Adds a received message to the receivedMessages map.
+      * Check if the message is being received for the first time.
+      *
+      * @param id      the unique identifier for the message
+      * @param message the message to be added
+      * @return true if the message is being received for the first time
      */
-    synchronized public void addReceivedMessage(long id, Message message) {
-        receivedMessages.putIfAbsent(id, message);
+    synchronized public boolean addReceivedMessage(long id, Message message) {
+        return receivedMessages.putIfAbsent(id, message) == null;
     }
 
     /**
      * Acknowledges a message by setting its received status to true.
+     * Only ack messages that were sent.
      *
      * @param id the unique identifier for the message
      */
     synchronized public void ackMessage(long id) {
-        sentMessages.get(id).setReceived(true);
+        Message message = sentMessages.get(id);
+        if (message != null) {
+            message.setReceived(true);
+        }
     }
 
     /**

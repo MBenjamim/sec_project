@@ -73,7 +73,7 @@ public class NetworkManager {
                     Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
 
                     if (receivedMessage != null) {
-                        handler.parseReceivedMessage(receivedMessage);
+                        handler.parseReceivedMessage(receivedMessage, id);
                     }
                 }
             } catch (IOException e) {

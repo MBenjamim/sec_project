@@ -5,9 +5,10 @@ public interface MessageHandler {
      * Parses and processes a received message in a separate thread.
      * Verifies the message (i.e. uses authenticated reliable link) before processing it.
      *
-     * @param message the received message
+     * @param message    the received message
+     * @param receiverId the ID of the node that received the message
      */
-    void parseReceivedMessage(Message message);
+    void parseReceivedMessage(Message message, int receiverId);
 
     /**
      * Processes incoming messages.

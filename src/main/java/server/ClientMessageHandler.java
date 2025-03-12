@@ -35,10 +35,10 @@ public class ClientMessageHandler implements MessageHandler {
     }
 
     @Override
-    public void parseReceivedMessage(Message message) {
+    public void parseReceivedMessage(Message message, int receiverId) {
         new Thread(() -> {
             NodeRegistry sender = clientNodes.get(message.getSender());
-            if (!ReliableLink.verifyMessage(message, sender, keyManager)) {
+            if (!ReliableLink.verifyMessage(message, sender, receiverId, keyManager)) {
                 return;
             }
             processMessage(message, sender);
@@ -48,19 +48,19 @@ public class ClientMessageHandler implements MessageHandler {
     @Override
     public void processMessage(Message message, NodeRegistry sender) {
         logger.info("Processing message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
+        boolean firstTime;
         switch (message.getType()) {
+            case ACK:
+                sender.ackMessage(message.getId()); // do not add the message since it does not have unique id
+                break;
+            case CLIENT_WRITE:
+                firstTime = sender.addReceivedMessage(message.getId(), message);
+                networkManager.acknowledgeMessage(message, sender);
+                if (firstTime) consensusLoop.addRequest(message);
+                break;
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
-                break;
-            case ACK:
-                sender.addReceivedMessage(message.getId(), message);
-                sender.ackMessage(message.getId());
-                break;
-            case CLIENT_WRITE:
-                sender.addReceivedMessage(message.getId(), message);
-                networkManager.acknowledgeMessage(message, sender);
-                consensusLoop.addRequest(message);
                 break;
             default:
                 logger.error("Unknown message type: {}", message.getType());

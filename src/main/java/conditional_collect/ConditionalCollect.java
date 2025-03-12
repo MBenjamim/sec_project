@@ -1,6 +1,6 @@
 package main.java.conditional_collect;
 
-import main.java.consensus.ConsensusMessage;
+import main.java.common.Message;
 
 /**
  * Interface for collecting proposed values from different processes
@@ -13,7 +13,7 @@ public interface ConditionalCollect {
      * @param processId The ID of the process
      * @param value     The process state and signature
      */
-    void addState(int processId, ConsensusMessage value);
+    void addValue(int processId, Message value);
 
     /**
      * Gets collected states if the number of states is greater than (N - F).

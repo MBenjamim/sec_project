@@ -29,9 +29,8 @@ public class KeyManager {
      */
     public KeyManager(int id, String type) {
         this.id = id;
-        String keyDir = type + id + "/";
         try {
-            this.privateKey = RSAKeyReader.readPrivateKey(keyDir + "private.key");
+            this.privateKey = RSAKeyReader.readPrivateKey(type + id + "/" + "private.key");
             // this.publicKey = RSAKeyReader.readPublicKey(keyDir + "public.key");
         } catch (Exception e) {
             logger.error("Failed to read key files", e);
@@ -60,18 +59,19 @@ public class KeyManager {
     /**
      * Verifies the signature of a message.
      *
-     * @param message the message to verify
-     * @param node    the node that sent the message
+     * @param message    the message to verify
+     * @param senderNode the node that sent the message
+     * @param receiverId the ID of the node that received the message (in some cases it is not this process)
      * @return true if the signature is valid, false otherwise
      * @throws NoSuchAlgorithmException if the algorithm is not available
      * @throws SignatureException       if an error occurs during verification
      * @throws InvalidKeyException      if the key is invalid
      */
-    public boolean verifyMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
-        int senderId = node.getId();
+    public boolean verifyMessage(Message message, NodeRegistry senderNode, int receiverId) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        int senderId = senderNode.getId();
         byte[] messageBytes = message.getPropertiesToSign().getBytes();
         byte[] signature = message.getSignature();
 
-        return RSAAuthenticator.verifySignature(node.getPublicKey(), senderId, this.id, messageBytes, signature);
+        return RSAAuthenticator.verifySignature(senderNode.getPublicKey(), senderId, receiverId, messageBytes, signature);
     }
 }

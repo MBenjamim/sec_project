@@ -8,11 +8,15 @@ import java.util.Map;
 import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.server.BlockchainNetworkServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decide the value to be appended to the blockchain across consensus epochs.
  */
 public class ConsensusLoop implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(ConsensusLoop.class);
+
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
     private final List<Block> requests = new ArrayList<>();
     private final BlockchainNetworkServer server;
@@ -30,18 +34,19 @@ public class ConsensusLoop implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("[CONSENSUS]: Loop Started");
+        logger.info("Consensus loop started");
         while (true) {
             this.doWork();
         }
     }
 
     /**
-     * Process a READ message received from a server (it should be the leader).
+     * Process a READ message received from a server should be sent by leader.
+     * Sends to leader the current STATE of consensus instance.
      *
      * @param message the message to be processed
      */
-    synchronized public void processReadMessage(ConsensusMessage message) {
+    synchronized public void processReadMessage(Message message) {
         long consensusIndex = message.getConsensusIdx();
         int epochTS = message.getEpochTS();
         int leaderId = message.getSender();
@@ -50,20 +55,20 @@ public class ConsensusLoop implements Runnable {
         State state = consensus.checkLeaderAndGetState(epochTS, leaderId);
 
         if (state != null) {
-            ConsensusMessage response =
-                    new ConsensusMessage(server.generateMessageId(), MessageType.STATE, server.getId(),
+            Message response =
+                    new Message(server.generateMessageId(), MessageType.STATE, server.getId(),
                             state.toJson(), consensusIndex, epochTS);
             server.sendConsensusResponse(response, leaderId);
         }
     }
 
      /**
-     * Process a STATE message received from a server, done only by the leader.
-     * It collects the state and if enough states are collected, it broadcasts the collected states.
+     * Process a STATE message received from a server, done only by the LEADER.
+     * It collects the state and if enough states are collected, it broadcasts the COLLECTED states.
      * 
      * @param message the message to be processed
      */
-    synchronized public void processStateMessage(ConsensusMessage message) {
+    synchronized public void processStateMessage(Message message) {
         long consensusIndex = message.getConsensusIdx();
         int epochTS = message.getEpochTS();
 
@@ -71,26 +76,22 @@ public class ConsensusLoop implements Runnable {
         String collectedStates = consensus.collectStateAndGetIfEnough(epochTS, message, server.getId());
 
         if (collectedStates != null) {
-            for (int serverId = 0; serverId < N; serverId++) {
-                ConsensusMessage broadcast =
-                        new ConsensusMessage(server.generateMessageId(), MessageType.COLLECTED, server.getId(),
-                                collectedStates, consensusIndex, epochTS);
-                server.sendConsensusResponse(broadcast, serverId);
-            }
+            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.COLLECTED, collectedStates);
         }
     }
 
     /**
      * Process a COLLECTED message received from a server should be sent by leader.
+     * If a value can be deterministically decided broadcasts it in a WRITE message.
      * 
      * @param message the message to be processed
      */
-    synchronized public void processCollectedMessage(ConsensusMessage message) {
+    synchronized public void processCollectedMessage(Message message) {
         long consensusIndex = message.getConsensusIdx();
         int epochTS = message.getEpochTS();
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        Map<Integer, ConsensusMessage> collectedMessages = consensus.getCollectedMessages(epochTS, message.getSender(), message.getContent());
+        Map<Integer, Message> collectedMessages = consensus.getCollectedMessages(epochTS, message.getSender(), message.getContent());
         if(collectedMessages == null) {
             return;
         }
@@ -99,11 +100,12 @@ public class ConsensusLoop implements Runnable {
         State leaderState = null;
 
         // Check if the state was tampered and if not add it to the list of collected states
-        for (Map.Entry<Integer, ConsensusMessage> entry : collectedMessages.entrySet()) {
+        int leaderId = message.getSender();
+        for (Map.Entry<Integer, Message> entry : collectedMessages.entrySet()) {
             int serverId = entry.getKey();
-            ConsensusMessage collectedMessage = entry.getValue();
+            Message collectedMessage = entry.getValue();
             try {
-                if (!server.getKeyManager().verifyMessage(collectedMessage, server.getNetworkNodes().get(serverId))) {
+                if (!server.getKeyManager().verifyMessage(collectedMessage, server.getNetworkNodes().get(serverId), leaderId)) {
                     return;
                 }
                 State state = State.fromJson(collectedMessage.getContent());
@@ -112,15 +114,18 @@ public class ConsensusLoop implements Runnable {
                     leaderState = state;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Failed to verify signature for collected message", e);
                 return;
             }
         }
 
+        logger.info("Verified all signatures and have enough STATE messages: {}", collectedStates.size());
+
         Block toWrite = consensus.determineValueToWrite(epochTS, collectedStates, leaderState, server.getNetworkClients().size());
         if (toWrite == null) {
-            //FIXME: abort
+            logger.error("ABORTED: consensus instance={}; consensus epoch={}", consensusIndex, epochTS); // FIXME: abort
         } else {
+            logger.info("Sending WRITE messages");
             server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.WRITE, toWrite.toJson());
         }
     }
@@ -148,7 +153,7 @@ public class ConsensusLoop implements Runnable {
             try {
                 wait(); // wait until condition is met
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage());
                 return;
             }
         }

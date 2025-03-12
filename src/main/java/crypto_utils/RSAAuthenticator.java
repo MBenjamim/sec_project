@@ -1,5 +1,9 @@
 package main.java.crypto_utils;
 
+import main.java.consensus.Consensus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.security.*;
 
@@ -7,6 +11,7 @@ import java.security.*;
  * Utility class for signing and verifying messages using RSA.
  */
 public class RSAAuthenticator {
+    private static final Logger logger = LoggerFactory.getLogger(RSAAuthenticator.class);
 
     /**
      * Signs a message using the private key.

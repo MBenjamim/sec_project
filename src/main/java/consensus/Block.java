@@ -3,9 +3,7 @@ package main.java.consensus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,12 +11,13 @@ import java.util.Base64;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Block {
     private static final Logger logger = LoggerFactory.getLogger(Block.class);
 
-
-    private final String value;
-    private final int clientId;
+    private String value;
+    private int clientId;
 
     @JsonIgnore
     @ToString.Exclude

@@ -1,7 +1,5 @@
 package main.java.common;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
@@ -22,10 +20,6 @@ import java.util.Base64;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.CLASS,
-        property = "@class"
-)
 public class Message {
     private static final Logger logger = LoggerFactory.getLogger(Message.class);
 
@@ -33,11 +27,17 @@ public class Message {
     private int sender;
     private MessageType type;
     private String content;
-    private boolean received;
+    @JsonIgnore
+    private boolean received = false;
 
     @JsonIgnore
     @ToString.Exclude
     private byte[] signature;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long consensusIdx = null;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Integer epochTS = null;
 
     /**
      * Constructor for the Message class.
@@ -51,7 +51,6 @@ public class Message {
         this.type = type;
         this.sender = sender;
         this.content = "";
-        this.received = false;
     }
 
     /**
@@ -68,13 +67,33 @@ public class Message {
     }
 
     /**
+     * Constructor for the Message (consensus) class with content.
+     *
+     * @param id           the unique identifier for the message
+     * @param type         the type of the message
+     * @param sender       the unique identifier for the sender
+     * @param content      the content of the message
+     * @param consensusIdx the consensus instance identifier
+     * @param epochTS      the epoch timestamp in the corresponding consensus instance
+     */
+    public Message(long id, MessageType type, int sender, String content, long consensusIdx, int epochTS) {
+        this(id, type, sender, content);
+        this.consensusIdx = consensusIdx;
+        this.epochTS = epochTS;
+    }
+
+    /**
      * Retrieves the properties of the message to be signed.
      *
      * @return a string representation of the properties to be signed
      */
     @JsonIgnore
     public String getPropertiesToSign() {
-        return id + "," + type + "," + content;
+        String propertiesToSign = id + "," + type + "," + content;
+        if (consensusIdx != null && epochTS != null) {
+            propertiesToSign += "," + consensusIdx + "," + epochTS;
+        }
+        return propertiesToSign;
     }
 
     /**

@@ -30,7 +30,7 @@ public class ReliableLink {
      * @throws IOException if an error occurs during packet reception
      */
     public static Message receiveMessage(DatagramSocket udpSocket) throws IOException {
-        int bufferSize = 1024;
+        int bufferSize = 4096; // FIXME: maybe we need to implement chunks since it only supports at most 4 servers (given the size of COLLECTED message)
         byte[] buffer = new byte[bufferSize];
 
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -51,12 +51,13 @@ public class ReliableLink {
      *
      * @param message the message to verify
      * @param sender  the node that sent the message
+     * @param recvId  the ID of the node that received the message
      * @param km      the KeyManager used for verification
      * @return true if the message is valid, false otherwise
      */
-    public static boolean verifyMessage(Message message, NodeRegistry sender, KeyManager km) {
+    public static boolean verifyMessage(Message message, NodeRegistry sender, int recvId, KeyManager km) {
         try {
-            if (sender == null || !km.verifyMessage(message, sender)) {
+            if (sender == null || !km.verifyMessage(message, sender, recvId)) {
                 logger.error("Invalid message: {}", message);
                 return false;
             }

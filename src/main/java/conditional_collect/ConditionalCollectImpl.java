@@ -5,7 +5,9 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import main.java.consensus.ConsensusMessage;
+import main.java.common.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the ConditionalCollect interface.
@@ -13,7 +15,9 @@ import main.java.consensus.ConsensusMessage;
  * and filtering them based on a specified condition.
  */
 public class ConditionalCollectImpl implements ConditionalCollect {
-    private Map<Integer, ConsensusMessage> states = new HashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(ConditionalCollectImpl.class);
+
+    private Map<Integer, Message> states = new HashMap<>();
     private final int N; // Total number of processes
     private final int F; // Fault tolerance threshold
     private boolean collected;
@@ -32,7 +36,7 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     }
 
     @Override
-    synchronized public void addState(int processId, ConsensusMessage value) {
+    synchronized public void addValue(int processId, Message value) {
         if (!collected) {
             states.put(processId, value);
         }
@@ -45,10 +49,10 @@ public class ConditionalCollectImpl implements ConditionalCollect {
             try {
                 ObjectMapper objectMapper = new ObjectMapper();
                 String jsonString = objectMapper.writeValueAsString(states);
-                this.states = new HashMap<>(); // reset collected states
+                this.states = new HashMap<>();
                 return jsonString;
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Failed to convert JSON to collected messages map", e);
                 return null;
             }
         }
@@ -64,20 +68,4 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     synchronized public void markAsCollected() {
         collected = true;
     }
-    /* synchronized public Map<Integer, ConsensusMessage> collectValues() {
-        Map<Integer, ConsensusMessage> collectedValues = new HashMap<>();
-        if (this.proposedValues.size() >= N - F) {
-            for (Map.Entry<Integer, ConsensusMessage> entry : proposedValues.entrySet()) {
-                if (checkCondition(entry.getValue())) {
-                    collectedValues.put(entry.getKey(), entry.getValue());
-                }
-            }
-        }
-        return collectedValues;
-    } */
-
-    /* @Override
-    public boolean checkCondition(String value) {
-        return value != null && !value.isEmpty();
-    } */
 }

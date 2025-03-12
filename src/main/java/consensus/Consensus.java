@@ -4,10 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.Setter;
+import main.java.common.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decide the value to be appended to the blockchain across consensus epochs.
@@ -15,6 +19,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Consensus {
+    private static final Logger logger = LoggerFactory.getLogger(Consensus.class);
     private final Map<Integer, ConsensusEpoch> epochs =  new HashMap<>();
 
     private final State state;
@@ -62,9 +67,9 @@ public class Consensus {
     /**
      * Check if the leader ID corresponds to the leader of a given epoch.
      * 
-     * @param epochTS The timestamp of the epoch to check.
-     * @param leaderId The ID of the leader to verify.
-     * @return true if the leader ID matches the leader of the given epoch, false otherwise.
+     * @param epochTS The timestamp of the epoch to check
+     * @param leaderId The ID of the leader to verify
+     * @return true if the leader ID matches the leader of the given epoch, false otherwise
      */
     public boolean checkLeader(int epochTS, int leaderId) {
         if (epochTS < currTS) return false;
@@ -78,9 +83,9 @@ public class Consensus {
      * Check if the leader ID corresponds to the leader of a given epoch,
      * and returns the current state of consensus from this process.
      * 
-     * @param epochTS The timestamp of the epoch to check.
-     * @param leaderId The ID of the leader to verify.
-     * @return The current state if the leader ID matches the leader of the given epoch, null otherwise.
+     * @param epochTS  The timestamp of the epoch to check
+     * @param leaderId The ID of the leader to verify
+     * @return The current state if the leader ID matches the leader of the given epoch, null otherwise
      */
     public State checkLeaderAndGetState(int epochTS, int leaderId) {
         return checkLeader(epochTS, leaderId) ? state : null;
@@ -97,35 +102,41 @@ public class Consensus {
      * @param stateSigned The state of some process including its signature
      * @param serverId    This process ID to check if is the leader
      */
-    public String collectStateAndGetIfEnough(int epochTS, ConsensusMessage stateSigned, int serverId) {
+    public String collectStateAndGetIfEnough(int epochTS, Message stateSigned, int serverId) {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
-        if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {  // this server is the leader of this epoch and sent READ messages before
+        if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {
             epoch.addToCollector(stateSigned.getSender(), stateSigned);
-            return epoch.getCollector().collectValues();
+            String toSend = epoch.getCollector().collectValues();
+            if (toSend != null) {
+                epoch.setSentCollected(true);
+            }
+            return toSend;
         }
         return null;
     }
 
     /**
      * Used upon receiving COLLECTED message.
+     * Check if the leader ID corresponds to the leader of a given epoch,
+     * and returns the map of states from collected message.
      *
-     * @param epochTS
-     * @param leaderId
-     * @param jsonString collect message content
-     * @return ConsensusMessage map
+     * @param epochTS    The timestamp of the epoch to check
+     * @param leaderId   The ID of the leader to verify
+     * @param jsonString Collected message content i.e. JSON string
+     * @return Message map where values are states from collected message
      */
-    public Map<Integer, ConsensusMessage> getCollectedMessages(int epochTS, int leaderId, String jsonString) {
+    public Map<Integer, Message> getCollectedMessages(int epochTS, int leaderId, String jsonString) {
         if (epochTS < currTS || !checkLeader(epochTS, leaderId)) return null;
 
         // Get map of collected messages from json string
-        Map<Integer, ConsensusMessage> collectedMessages;
+        Map<Integer, Message> collectedMessages;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            collectedMessages = objectMapper.readValue(jsonString, Map.class);
+            collectedMessages = objectMapper.readValue(jsonString, new TypeReference<>() {});
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert JSON to collected messages map", e);
             return null;
         }
 
@@ -137,70 +148,105 @@ public class Consensus {
     }
 
     /**
+     * Used upon receiving COLLECTED message after leader and signature verification, and to send WRITE message.
+     * Uses a deterministic process to determinate the value to assign to a WRITE message, given a collection of states.
      * 
-     * Deterministic process to determinate the value to assign to a WRITE message,
-     * given a collection of states
-     * 
-     * @param epochTS
-     * @param collectedStates
-     * @param leaderState
-     * @param nrClients
-     * @return Block
+     * @param epochTS         The timestamp of the epoch to receive the COLLECTED message
+     * @param collectedStates The collection of states
+     * @param leaderState     The state of the leader for unbound decisions
+     * @param nrClients       Number of clients to check is value is valid
+     * @return Block containing the decided value and ID of the client that proposed the value,
+     * or null if no value can be decided
      */
     public Block determineValueToWrite(int epochTS, List<State> collectedStates, State leaderState, int nrClients) {
         // if (epochTS < currTS) return null; // verified before using checkLeader()
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         epoch.getCollector().markAsCollected();
 
+        // Check all states for a value stopping when a deterministic value is found (skip invalid values)
         for (State state : collectedStates) {
-            Block value = state.getValue();
-            int valueTS = state.getValueTS();
-            Block tmpval = null;
+            if (state == null || !state.checkValid(nrClients)) continue;
 
-            if (!value.checkValid(nrClients)) continue;
-
-            int count = 0;
-            if (state.getValueTS() >= 0) {
-                for (State otherState : collectedStates) {
-                    if (otherState.getValue().equals(value) && otherState.getValueTS() == valueTS) {
-                        // value is bound
-                        if (++count > F) {
-                            tmpval = value;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // value is unbound
-            if (count < F + 1 && leaderState.getValue().equals(value)) {
-                tmpval = value;
-            }
-
-            if (tmpval != null) {
-                Map<Integer, Block> writeSet = this.state.getWriteSet();
-                Block aux = writeSet.get(valueTS);
-                if (aux != null && aux.equals(value)) {
-                    writeSet.remove(valueTS);
-                }
+            Block value = determineValueFromState(state, collectedStates, leaderState);
+            if (value != null) {
                 currTS = epochTS;
-                writeSet.put(epochTS, value);
+                this.state.getWriteSet().put(epochTS, value);
                 return value;
             }
         }
         return null;
     }
 
-    public void collectWrite(ConsensusMessage message) {
-        // check if timestamp matches, if not ignore
-        //state.getWriteSet().put(message.getSender(), new Block(message.getContent(), message.getSender(), message.getSignature())); // FIXME
-        // check condition and send ACCEPT message
+    /**
+     * Given a state from collection of states determine if some value can be decided:
+     *      - Starts by verifying if the value was written in some epoch (verify timestamp),
+     *      and check if this pair (valTS, val) is in a minimum number of write sets.
+     *      If both conditions are verified the value is bound and can be decided.
+     *      - If value is unbound check if it matches what leader proposed (is present in its state).
+     *      If this is confirmed the value can be decided, otherwise any value can be decided.
+     * If some value can be decided the current epoch timestamp is updated,
+     * and adds the value to the write set with that timestamp (removing the entry with the old timestamp if present).
+     *
+     * @param state           The state from collection to check
+     * @param collectedStates The collection of states
+     * @param leaderState     The state of the leader for unbound decisions
+     * @return Block containing the decided value and ID of the client that proposed the value,
+     * or null if no value can be decided
+     */
+    public Block determineValueFromState(State state, List<State> collectedStates, State leaderState) {
+        Block value = state.getValue();
+        int valueTS = state.getValueTS();
+        Block tmpval = null;
+
+        int count = 0;
+        if (state.getValueTS() >= 0) {
+            for (State otherState : collectedStates) {
+                if (otherState.getValue().equals(value) && otherState.getValueTS() == valueTS) {
+                    // value is bound
+                    if (++count > F) {
+                        tmpval = value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // value is unbound
+        if (count < F + 1 && leaderState.getValue().equals(value)) {
+            tmpval = value;
+        }
+
+        if (tmpval != null) {
+            Map<Integer, Block> writeSet = this.state.getWriteSet();
+            Block valueInWriteSet = writeSet.get(valueTS);
+            if (valueInWriteSet != null && valueInWriteSet.equals(value)) {
+                writeSet.remove(valueTS);
+            }
+            return value;
+        }
+        return null;
     }
 
-    public void collectAccept(ConsensusMessage message) {
-        //ConsensusEpoch epoch = getConsensusEpoch(message.getEpochTS());
-        //epoch.addAccepted(message);
-        // check condition and decide (end consensus instance)
+    public Block collectWriteAndGetIfEnough(int epochTS, Block value, int serverId) {
+        if (epochTS < currTS) return null;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
+            // TODO: to send ACCEPT
+            return null;
+        }
+        return null;
+    }
+
+    public Block collectAcceptAndGetIfEnough(int epochTS, Block value, int serverId) {
+        if (epochTS < currTS) return null;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
+            // TODO: to DECIDE
+            return null;
+        }
+        return null;
     }
 
     synchronized public ConsensusEpoch getConsensusCurrentEpoch() {

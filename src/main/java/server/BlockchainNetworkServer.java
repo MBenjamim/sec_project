@@ -8,7 +8,6 @@ import main.java.common.NetworkManager;
 import main.java.common.NodeRegistry;
 import main.java.consensus.ConsensusEpoch;
 import main.java.consensus.ConsensusLoop;
-import main.java.consensus.ConsensusMessage;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +32,9 @@ public class BlockchainNetworkServer {
     private int timeout;
 
     private final KeyManager keyManager;
-    private final ConsensusLoop consensusLoop;
-    private final Thread consensusThread;
+    // the following is set based on config
+    private ConsensusLoop consensusLoop;
+    private Thread consensusThread;
     private NetworkManager networkManager;
 
     /**
@@ -49,8 +49,6 @@ public class BlockchainNetworkServer {
         this.serverPort = serverPort;
         this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
-        this.consensusLoop = new ConsensusLoop(this);
-        this.consensusThread = new Thread(consensusLoop);
     }
 
     /**
@@ -70,6 +68,8 @@ public class BlockchainNetworkServer {
 
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort);
         server.loadConfig();
+        server.consensusLoop = new ConsensusLoop(server);
+        server.consensusThread = new Thread(server.consensusLoop);
         server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
         server.start();
     }
@@ -120,8 +120,9 @@ public class BlockchainNetworkServer {
     }
 
     public void broadcastConsensusResponse(long consensusIdx, int epochTS, MessageType type, String content) {
+        long messageId = generateMessageId();
         for (NodeRegistry node : networkNodes.values()) {
-            ConsensusMessage message = new ConsensusMessage(generateMessageId(), type, id, content, consensusIdx, epochTS);
+            Message message = new Message(messageId, type, id, content, consensusIdx, epochTS);
             networkManager.sendMessageThread(message, node);
         }
     }

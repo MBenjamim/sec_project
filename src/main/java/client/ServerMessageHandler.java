@@ -32,10 +32,10 @@ public class ServerMessageHandler implements MessageHandler {
     }
 
     @Override
-    public void parseReceivedMessage(Message message) {
+    public void parseReceivedMessage(Message message, int receiverId) {
         new Thread(() -> {
             NodeRegistry sender = networkNodes.get(message.getSender());
-            if (!ReliableLink.verifyMessage(message, sender, keyManager)) {
+            if (!ReliableLink.verifyMessage(message, sender, receiverId, keyManager)) {
                 return;
             }
             processMessage(message, sender);
@@ -46,13 +46,12 @@ public class ServerMessageHandler implements MessageHandler {
     public void processMessage(Message message, NodeRegistry sender) {
         logger.debug("Processing message: id:{} content:\"{}\" type:{} sender:{}{}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
         switch (message.getType()) {
+            case ACK:
+                sender.ackMessage(message.getId()); // do not add the message since it does not have unique id
+                break;
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
-                break;
-            case ACK:
-                sender.addReceivedMessage(message.getId(), message);
-                sender.ackMessage(message.getId());
                 break;
             default:
                 logger.debug("Unknown message type: {}", message.getType());
