@@ -17,7 +17,7 @@ public class Block {
     private static final Logger logger = LoggerFactory.getLogger(Block.class);
 
     private String value;
-    private int clientId;
+    private Integer clientId;
 
     @JsonIgnore
     @ToString.Exclude
@@ -30,7 +30,7 @@ public class Block {
     }
 
     public boolean checkValid(int nrClients) {
-        return value != null && !value.isBlank() && clientId > 0 && clientId < nrClients;
+        return value != null && clientId != null && !value.isBlank() && clientId > -1 && clientId < nrClients;
     }
 
     @Override
