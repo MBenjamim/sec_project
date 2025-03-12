@@ -56,14 +56,6 @@ public class Consensus {
         return currTS;
     }
 
-    public String decide(Block value) {
-        return "";
-    }
-
-    public void abort() {
-        // send ABORT to every node (?including this?): use index to identify #decision and timestamp to identify #epoch
-    }
-
     /**
      * Check if the leader ID corresponds to the leader of a given epoch.
      * 
@@ -108,7 +100,7 @@ public class Consensus {
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {
             epoch.addToCollector(stateSigned.getSender(), stateSigned);
-            String toSend = epoch.getCollector().collectValues();
+            String toSend = epoch.getCollector().collectValues(serverId);
             if (toSend != null) {
                 epoch.setSentCollected(true);
             }
@@ -169,8 +161,7 @@ public class Consensus {
 
             Block value = determineValueFromState(state, collectedStates, leaderState);
             if (value != null) {
-                currTS = epochTS;
-                this.state.getWriteSet().put(epochTS, value);
+                updateStateAndEpochTS(epochTS, value, false);
                 return value;
             }
         }
@@ -216,37 +207,84 @@ public class Consensus {
             tmpval = value;
         }
 
-        if (tmpval != null) {
-            Map<Integer, Block> writeSet = this.state.getWriteSet();
-            Block valueInWriteSet = writeSet.get(valueTS);
-            if (valueInWriteSet != null && valueInWriteSet.equals(value)) {
-                writeSet.remove(valueTS);
+        return tmpval;
+    }
+
+    /**
+     * Used upon receiving WRITE message and to send ACCEPT message.
+     * @param epochTS
+     * @param senderId
+     * @param json
+     * @param serverId
+     * @return
+     */
+    public Block collectWriteAndGetIfEnough(int epochTS, int senderId, String json, int serverId) {
+        if (epochTS < currTS) return null;
+
+        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
+        if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
+            Block value;
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                value = objectMapper.readValue(json, Block.class);
+            } catch (Exception e) {
+                logger.error("Failed to convert JSON to block", e);
+                return null;
             }
-            return value;
+
+            epoch.addWritten(senderId, value);
+            if (epoch.enoughWritten(value)) {
+                updateStateAndEpochTS(epochTS, value, true);
+                return value;
+            }
         }
         return null;
     }
 
-    public Block collectWriteAndGetIfEnough(int epochTS, Block value, int serverId) {
+    /**
+     * Used upon receiving ACCEPT message and to decide (finish consensus instance).
+     * @param epochTS
+     * @param senderId
+     * @param json
+     * @param serverId
+     * @return
+     */
+    public Block collectAcceptAndGetIfEnough(int epochTS, int senderId, String json, int serverId) {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
-            // TODO: to send ACCEPT
-            return null;
+            Block value;
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                value = objectMapper.readValue(json, Block.class);
+            } catch (Exception e) {
+                logger.error("Failed to convert JSON to block", e);
+                return null;
+            }
+
+            epoch.addAccepted(senderId, value);
+            if (epoch.enoughAccepted(value)) {
+                updateStateAndEpochTS(epochTS, value, true);
+                return value;
+            }
         }
         return null;
     }
 
-    public Block collectAcceptAndGetIfEnough(int epochTS, Block value, int serverId) {
-        if (epochTS < currTS) return null;
-
-        ConsensusEpoch epoch = getConsensusEpoch(epochTS);
-        if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
-            // TODO: to DECIDE
-            return null;
+    private void updateStateAndEpochTS(int epochTS, Block value, boolean toUpdatePair) {
+        currTS = epochTS;
+        if (toUpdatePair) {
+            state.setValueTS(currTS);
+            state.setValue(value);
         }
-        return null;
+        // update write set
+        Map<Integer, Block> writeSet = this.state.getWriteSet();
+        Block valueInWriteSet = writeSet.get(currTS);
+        if (valueInWriteSet != null && valueInWriteSet.equals(value)) {
+            writeSet.remove(currTS);
+        }
+        writeSet.put(epochTS, value);
     }
 
     synchronized public ConsensusEpoch getConsensusCurrentEpoch() {

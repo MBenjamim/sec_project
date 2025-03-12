@@ -19,6 +19,7 @@ public class ConsensusLoop implements Runnable {
 
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
     private final List<Block> requests = new ArrayList<>();
+    private final Map<Long, Block> blockchain = new HashMap<>();
     private final BlockchainNetworkServer server;
 
     private final int N; // Total number of processes (fault tolerance threshold can be calculated by (N - 1) / 3)
@@ -119,28 +120,59 @@ public class ConsensusLoop implements Runnable {
             }
         }
 
-        logger.info("Verified all signatures and have enough STATE messages: {}", collectedStates.size());
+        logger.debug("Verified all signatures and have enough STATE messages: {}", collectedStates.size());
 
         Block toWrite = consensus.determineValueToWrite(epochTS, collectedStates, leaderState, server.getNetworkClients().size());
         if (toWrite == null) {
-            logger.error("ABORTED: consensus instance={}; consensus epoch={}", consensusIndex, epochTS); // FIXME: abort
+            logger.error("ABORTED: consensus instance={}; consensus epoch={}; by message:\n{}", consensusIndex, epochTS, message); // FIXME: abort
         } else {
-            logger.info("Sending WRITE messages");
             server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.WRITE, toWrite.toJson());
         }
     }
 
-    /* FIXME: Missing
-        - pending requests from clients that notifies this loop
-        - the blockchain i.e. what was written by each consensus instance
-        (maybe in BlockchainNetworkServer instance that need to
-         be accessible and shared between ConsensusLoop and ServerHandler)
+    /**
+     * Process a WRITE message received from a server.
+     * It collects values and if enough values are the same, it broadcasts ACCEPT messages.
+     *
+     * @param message the message to be processed
      */
+    synchronized public void processWriteMessage(Message message) {
+        long consensusIndex = message.getConsensusIdx();
+        int epochTS = message.getEpochTS();
 
-    /* TODO: things that never happen given that I am the leader:
-     *  - cannot receive STATE (and future messages) before sending READs
-     *  - cannot receive WRITE / ACCEPT before sending COLLECTED
+        Consensus consensus = getConsensusInstance(consensusIndex);
+        Block value = consensus.collectWriteAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
+        if (value != null) {
+            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.ACCEPT, value.toJson());
+        }
+    }
+
+    /**
+     * Process a ACCEPT message received from a server.
+     * It collects values and if enough values are the same, decide i.e. ends consensus instance FIXME: ? and write in the blockchain.
+     *
+     * @param message the message to be processed
      */
+    synchronized public void processAcceptMessage(Message message) {
+        long consensusIndex = message.getConsensusIdx();
+        int epochTS = message.getEpochTS();
+
+        Consensus consensus = getConsensusInstance(consensusIndex);
+        Block value = consensus.collectAcceptAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
+        if (value != null) {
+            decide(consensusIndex, value);
+            logger.info("DECIDED: consensus instance={}; consensus epoch={}; by message:\n{}", consensusIndex, epochTS, message);
+        }
+    }
+
+    synchronized public void decide(long consensusIndex, Block block) {
+        if (blockchain.putIfAbsent(consensusIndex, block) != null) return;
+        requests.remove(block); // only removes first match
+        inConsensus = false;
+        currIndex++;
+        // TODO: send to client (in other thread)
+        wakeup();
+    }
 
     /**
      * Waits for new requests from clients and for the end of previous consensus instance.
@@ -165,8 +197,6 @@ public class ConsensusLoop implements Runnable {
         server.broadcastConsensusResponse(currIndex, epochTS, MessageType.READ, "");
     }
 
-    // check if I am leader and if I have values to propose and if I am not in other instance
-
     /**
      * Check if this process is in a consensus instance,
      * or has no client requests to be processed,
@@ -183,7 +213,6 @@ public class ConsensusLoop implements Runnable {
     synchronized void wakeup() {
         notify();
     }
-
 
     /**
      * Returns the consensus instance for the given index. Creates it if it does not exist.

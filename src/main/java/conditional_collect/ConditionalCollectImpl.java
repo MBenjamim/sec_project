@@ -43,9 +43,9 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     }
 
     @Override
-    synchronized public String collectValues() {
+    synchronized public String collectValues(int myId) {
         if (collected) return null;
-        if (this.states.size() >= N - F) {
+        if (states.size() >= N - F && states.get(myId) != null) {
             try {
                 ObjectMapper objectMapper = new ObjectMapper();
                 String jsonString = objectMapper.writeValueAsString(states);

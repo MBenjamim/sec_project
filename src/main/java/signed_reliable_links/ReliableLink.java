@@ -30,18 +30,18 @@ public class ReliableLink {
      * @throws IOException if an error occurs during packet reception
      */
     public static Message receiveMessage(DatagramSocket udpSocket) throws IOException {
-        int bufferSize = 4096; // FIXME: maybe we need to implement chunks since it only supports at most 4 servers (given the size of COLLECTED message)
+        int bufferSize = 6000; // FIXME: maybe we need to implement chunks since it only supports at most 4 servers (given the size of COLLECTED message)
         byte[] buffer = new byte[bufferSize];
 
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         udpSocket.receive(packet);
 
-        if (packet.getLength() > bufferSize) {
-            bufferSize = packet.getLength();
-            buffer = new byte[bufferSize];
-            packet.setData(buffer);
-            udpSocket.receive(packet);
-        }
+//        if (packet.getLength() > bufferSize) {
+//            bufferSize = packet.getLength();
+//            buffer = new byte[bufferSize];
+//            packet.setData(buffer);
+//            udpSocket.receive(packet);
+//        }
 
         return Message.fromJson(new String(packet.getData(), 0, packet.getLength()));
     }

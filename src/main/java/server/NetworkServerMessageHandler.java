@@ -71,7 +71,12 @@ public class NetworkServerMessageHandler implements MessageHandler {
             case WRITE:
                 firstTime = sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
-                if (firstTime) logger.info("WRITE MESSAGE HERE message: consensus_index={}; epoch_ts={}; type={}; sender={}", message.getConsensusIdx(), message.getEpochTS(), message.getType(), message.getSender());
+                if (firstTime) consensusLoop.processWriteMessage(message);
+                break;
+            case ACCEPT:
+                firstTime = sender.addReceivedMessage(message.getId(), message);
+                networkManager.acknowledgeMessage(message, sender);
+                if (firstTime) consensusLoop.processAcceptMessage(message);
                 break;
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);

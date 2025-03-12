@@ -18,9 +18,10 @@ public interface ConditionalCollect {
     /**
      * Gets collected states if the number of states is greater than (N - F).
      *
+     * @param myId Process ID to make a deterministic choice when leader is correct
      * @return A json representation of a map containing states
      */
-    String collectValues();
+    String collectValues(int myId);
 
     /**
      * Checks if collector received enough and valid states
