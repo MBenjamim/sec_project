@@ -170,7 +170,10 @@ public class ConsensusLoop implements Runnable {
         requests.remove(block); // only removes first match
         inConsensus = false;
         currIndex++;
-        // TODO: send to client (in other thread)
+        Message response =
+                new Message(server.generateMessageId(), MessageType.DECISION, server.getId(),
+                        block.getValue(), consensusIndex, -1);
+        server.sendReplyToClient(response, block.getClientId());
         wakeup();
     }
 

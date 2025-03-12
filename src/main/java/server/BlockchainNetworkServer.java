@@ -114,8 +114,13 @@ public class BlockchainNetworkServer {
         networkClients.values().forEach(node -> logger.debug("[CONFIG] client{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
     }
 
-    public void sendConsensusResponse(Message message, int receiverId){
+    public void sendConsensusResponse(Message message, int receiverId) {
         NodeRegistry receiver = networkNodes.get(receiverId);
+        networkManager.sendMessageThread(message, receiver);
+    }
+
+    public void sendReplyToClient(Message message, int clientId) {
+        NodeRegistry receiver = networkClients.get(clientId);
         networkManager.sendMessageThread(message, receiver);
     }
 

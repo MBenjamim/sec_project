@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -44,7 +45,7 @@ public class Block {
         }
 
         Block block = (Block) o;
-        return value.equals(block.value) && clientId == block.clientId;
+        return value.equals(block.value) && Objects.equals(clientId, block.clientId);
     }
 
     /**

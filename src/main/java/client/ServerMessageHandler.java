@@ -1,7 +1,6 @@
 package main.java.client;
 
 import main.java.common.*;
-import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +16,7 @@ public class ServerMessageHandler implements MessageHandler {
     private final Map<Integer, NodeRegistry> networkNodes;
     private final NetworkManager networkManager;
     private final KeyManager keyManager;
+    private final BlockchainConfirmationCollector confirmationCollector;
 
     /**
      * Constructor for the NodeHandler class.
@@ -25,10 +25,11 @@ public class ServerMessageHandler implements MessageHandler {
      * @param networkManager to send back messages if needed
      * @param keyManager     to verify signatures
      */
-    public ServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager) {
+    public ServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, BlockchainConfirmationCollector confirmationCollector) {
         this.networkNodes = networkNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
+        this.confirmationCollector = confirmationCollector;
     }
 
     @Override
@@ -52,6 +53,11 @@ public class ServerMessageHandler implements MessageHandler {
             case CONNECT:
                 sender.addReceivedMessage(message.getId(), message);
                 networkManager.acknowledgeMessage(message, sender);
+                break;
+            case DECISION:
+                boolean firstTime = sender.addReceivedMessage(message.getId(), message);
+                networkManager.acknowledgeMessage(message, sender);
+                if (firstTime) confirmationCollector.collectConfirmation(message);
                 break;
             default:
                 logger.debug("Unknown message type: {}", message.getType());
