@@ -22,6 +22,9 @@ import java.security.SignatureException;
 public class ReliableLink {
     private static final Logger logger = LoggerFactory.getLogger(ReliableLink.class);
 
+    private static final int BASE_BUFFER = 4096;
+    private static final int MAX_BUFFER = 65536;
+
     /**
      * Receives a message from a UDP socket and converts the received data into a Message object.
      *
@@ -30,20 +33,22 @@ public class ReliableLink {
      * @throws IOException if an error occurs during packet reception
      */
     public static Message receiveMessage(DatagramSocket udpSocket) throws IOException {
-        int bufferSize = 6000; // FIXME: maybe we need to implement chunks since it only supports at most 4 servers (given the size of COLLECTED message)
+        int bufferSize = BASE_BUFFER;
         byte[] buffer = new byte[bufferSize];
 
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         udpSocket.receive(packet);
 
-//        if (packet.getLength() > bufferSize) {
-//            bufferSize = packet.getLength();
-//            buffer = new byte[bufferSize];
-//            packet.setData(buffer);
-//            udpSocket.receive(packet);
-//        }
+        Message message;
+        while ((message = Message.fromJson(new String(packet.getData(), 0, packet.getLength()), true)) == null
+                && bufferSize <= MAX_BUFFER) {
+            bufferSize += BASE_BUFFER;
+            buffer = new byte[bufferSize];
+            packet = new DatagramPacket(buffer, buffer.length);
+            udpSocket.receive(packet);
+        }
 
-        return Message.fromJson(new String(packet.getData(), 0, packet.getLength()));
+        return message;
     }
 
     /**

@@ -102,11 +102,16 @@ public class Message {
      * @return the JSON string representation of the message
      */
     public String toJson() {
+        String json = null;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.writeValueAsString(this);
+            json = objectMapper.writeValueAsString(this);
+            if (json != null) {
+                objectMapper.readValue(json, Message.class);
+            }
+            return json;
         } catch (Exception e) {
-            logger.error("Failed to convert message to JSON", e);
+            logger.error("Failed to convert message to JSON: {}", json, e);
             return null;
         }
     }
@@ -122,7 +127,17 @@ public class Message {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(json, Message.class);
         } catch (Exception e) {
-            logger.error("Failed to convert JSON to message", e);
+            logger.error("Failed to convert JSON to message: {}", json, e);
+            return null;
+        }
+    }
+
+    public static Message fromJson(String json, boolean ignoreError) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(json, Message.class);
+        } catch (Exception e) {
+            //logger.error("Failed to convert JSON to message: {}", json, e);
             return null;
         }
     }
