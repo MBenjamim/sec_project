@@ -44,16 +44,17 @@ public class BlockchainClient {
      * @param args command line arguments (serverId and serverPort)
      */
     public static void main(String[] args) {
-        if (args.length != 2) {
-            logger.error("Usage: java BlockchainClient <clientId> <serverPort>");
+        if (args.length != 3) {
+            logger.error("Usage: java BlockchainClient <clientId> <serverPort> <configFile>");
             System.exit(1);
         }
 
         int clientId = Integer.parseInt(args[0]);
         int port = Integer.parseInt(args[1]);
+        String configFile = args[2];
         logger.info("Initing Client with serverId: {} and serverPort: {}", clientId, port);
         BlockchainClient client = new BlockchainClient(clientId, port);
-        client.loadConfig();
+        client.loadConfig(configFile);
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
         client.collector = new BlockchainConfirmationCollector(client.networkNodes.size());
         client.start();
@@ -95,8 +96,8 @@ public class BlockchainClient {
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
      */
-    public void loadConfig() {
-        ConfigLoader config = new ConfigLoader();
+    public void loadConfig(String configFile) {
+        ConfigLoader config = new ConfigLoader(configFile);
 
         int numServers = config.getIntProperty("NUM_SERVERS");
         int basePort = config.getIntProperty("BASE_PORT_CLIENT_TO_SERVER");

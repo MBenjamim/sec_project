@@ -1,0 +1,55 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------< com.example:blockchain-network >-------------------
+[INFO] Building blockchain-network 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ blockchain-network ---
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file server2/private.key...
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Private key successfully read from file server2/private.key
+2025-03-13 23:32:12 INFO  main.java.consensus.ConsensusLoop - Consensus loop started
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server0_public.key...
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server0_public.key
+2025-03-13 23:32:12 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:0, content:"", type:CONNECT, sender:server0}
+2025-03-13 23:32:12 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:0, content:"", type:ACK, sender:server0}
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server1_public.key...
+2025-03-13 23:32:12 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server1_public.key
+2025-03-13 23:32:12 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:0, content:"", type:ACK, sender:server1}
+2025-03-13 23:32:12 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:0, content:"", type:CONNECT, sender:server1}
+2025-03-13 23:32:16 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:18 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/client0_public.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/client0_public.key
+2025-03-13 23:32:18 INFO  m.java.server.ClientMessageHandler - Processing message: {id:1, content:"value_to_append", type:CLIENT_WRITE, sender:client0}
+2025-03-13 23:32:18 INFO  m.java.server.ClientMessageHandler - Processing message: {id:0, content:"", type:CONNECT, sender:client0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:1, content:"", type:READ, sender:server0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:1, content:"", type:ACK, sender:server0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"{"0":{"id":2,"sender":0,"type":"STATE","content":"{\"writeSet\":{},\"value\":{\"value\":\"value_to_append\",\"clientId\":0},\"valueTS\":-1}","consensusIdx":0,"epochTS":0,"signature":"UT2C8VvKmC8v35vE7uYcTmGbDILtVnoVxeIRi9AVKJWTbC22Zruff/hEBx8Ux3kQcDWba2+YuMD8LCxGB2G55JIjdIXTZ+vddZg/InhOpgCQEBIcgtPJ1nnG84HJOfsF+Ld73hZoT+cl3xNC5BqWVERX4m6kfvxnunmmYi2pEusVfFHscFI5g3mzSku2ksWXc8RGmVwkFCo/Pz9VGuyFnCd7uLK0OLRUlJGoVf6BlZnQ09y/WK+BU09JAeDm0OzjTuw3URP0yoBORiyMbfBjbGiXWsa7DIQcMqglarixOIJbQdIvrdkZWhit5MiGsKzFvbgOYvR8uB2lOyIQtd0q9pbCUiWpxc0dLc3JONIR+hD9BLQ/kDftJQo0VDr5ih1RELFx2A8FY2cUbOtgCA28YiyJn3KVJODu2Z/A0FLKyAlkcj8N5eTMzT0J9fe2B6WW4kpCugB/ZgH3YdtnSzw1Q6Pb31qYubfmJRSHaTV/lNffyYaB7xd3RvDQLdMHhL2V/q8BMeJ0893SES47PLYcnuyXyB3vU52pK0isQqlaaXqEj7XqpM2///zjL6XhWGCT0O9YJoTIpUgnAOxUrt8RQ3JsJ4Dm2PHjBKIBrJUnN1EvPts3tsHOCRIyU5ycB1epK18Kcn6+4jErxjqGtkwfDOp3xleuQFD0jDb4QiXykAo="},"1":{"id":1,"sender":1,"type":"STATE","content":"{\"writeSet\":{},\"value\":null,\"valueTS\":-1}","consensusIdx":0,"epochTS":0,"signature":"t2cGQZkbB9TpYkGATM5Tod0ebXTsmr29GK0SRudZOAT488NsIvS40CLdREctInt+VfDHygOsptDEOEjpJuUn9PUxfeDocHWqfmQtZ5j4WAQ1T5+WwLq8ApiCaOLg9w/tlicc3DnLfZWRc51+4uzLi4Evc8ClU/Lk1kspFI64/QfQwBFEwRZCGRP+Hj2RTwjFwPr8ifDjKzbEARidvxqqZKojZ0jKavCpej3BHjLVwky5JLsh0vKSfXcu8SKFsvafCcqmL43mmuJ+UKo1sMPfTVYR27vJxRwEn4t/lFlMGMKUxkziNjJE/hXTiYCYCdIMqaqLgeV0N8Wa/F0u3QMox3BYYZmbLdkvH6lmUgM7rh0f4aeGstxQM5BOercDrENlz4x9QUoxr7hVyYAXDLwszzOY6jmCwVk+PxX4Q5lzbLlWfJ/uKwZD+14a/XlngkYiCilHw5/osuVZZvk3gUYmpxHqR04DO+jN4mdzc+rCRZwlTMUI9Yw7ca3yorZ2++0nE48fr5xOyinij13ZItEk5njDNlhkoXGGfE8dNIBaseVNk/VBKqvG9fxMhRKqHDpCJkJVi5k1n6/n+ULDU95Yke7QpkQT3IHnjFeZZ8Bdcy4UwPyflT8WKACdrlvKgwfL7wMHXiZItnFJjptIy3s/8oFupV/hvMN3w5kEuUkswNA="},"2":{"id":1,"sender":2,"type":"STATE","content":"{\"writeSet\":{},\"value\":null,\"valueTS\":-1}","consensusIdx":0,"epochTS":0,"signature":"dYpj7iIOt+X7dghp9RFVjEFQAZGg+Zdy/F0BWDtIm4OJZU4sBnNmH+8lJRzmqoL5gA3K+vCex0lSnJD64U+g1nyFjEQlIeWuk/ofLxEsM0vMwz6/iymjExcEG9L3xmIH2dtMONBHc0zWJoYFn6FLM6S70MpslePUyhv5Ih9RZTAdH4XpY8kLWtkr/oy3YgiRZ5TVnXW1n+jK5yhUrPEm/FxI6ofp58VjhYDrB0jzocxBEiRRXddBA97Bs/GPc/UC0/GT4ZdsyNor+MUCV2ZBDDkw0LLkz/BoADTCYS59qCj6Sht1JLBTlX8jOIHYH9GyJ1SxOrnR0hlbu+MNlq/bWyW5m3LMpu0w7hGqwVcb15h0p1Ch0wECS9wNLAJLfVy5ttt5aQNiX5e8a9OYh0BcUWE8CcHIgVTKZ3Dy7YTxvPUdA1/mjy9Hz1KB2TOy6CGhKm/tt1cF3wpPjwxXH1JHe7BPmX3o+KXOK6o6mO0vOxn/sjwOP6Zgujzw08/gWDJRhYwR4NY8HYeejsCN5Ua5aifwmDxoghMJLhxVzVhx5yPaOiSX4/gek8oKOMSIJ7Qiv3v0R8wVUMbs6ZDiUCaWDWUCOc2dA1+zjY/P9f/zFUEXzWx1+2TGIFICPa6BA+OlTfEbuNVwq8kQc9jlBCrWXPeEjg48NNQDzCixoEVpaKc="}}", type:COLLECTED, sender:server0}
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server2_public.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server2_public.key
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:2, content:"{"value":"value_to_append","clientId":0}", type:WRITE, sender:server2}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:4, content:"{"value":"value_to_append","clientId":0}", type:WRITE, sender:server0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:2, content:"{"value":"value_to_append","clientId":0}", type:WRITE, sender:server1}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:2, content:"", type:ACK, sender:server1}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:2, content:"", type:ACK, sender:server2}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:2, content:"", type:ACK, sender:server0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"{"value":"value_to_append","clientId":0}", type:ACCEPT, sender:server1}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"{"value":"value_to_append","clientId":0}", type:ACCEPT, sender:server2}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:5, content:"{"value":"value_to_append","clientId":0}", type:ACCEPT, sender:server0}
+2025-03-13 23:32:18 INFO  main.java.consensus.ConsensusLoop - DECIDED: consensus instance=0; consensus epoch=0; by message:
+Message(id=5, sender=0, type=ACCEPT, content={"value":"value_to_append","clientId":0}, received=false, consensusIdx=0, epochTS=0)
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"", type:ACK, sender:server1}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"", type:ACK, sender:server0}
+2025-03-13 23:32:18 INFO  m.j.s.NetworkServerMessageHandler - Processing message: {id:3, content:"", type:ACK, sender:server2}
+2025-03-13 23:32:18 INFO  m.java.server.ClientMessageHandler - Processing message: {id:4, content:"", type:ACK, sender:client0}
+2025-03-13 23:32:19 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:21 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:22 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:22 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:23 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:24 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:24 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:25 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:25 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003
+2025-03-13 23:32:25 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:5003

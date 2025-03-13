@@ -9,12 +9,14 @@ import main.java.common.NodeRegistry;
 import main.java.consensus.ConsensusEpoch;
 import main.java.consensus.ConsensusLoop;
 import lombok.Getter;
+import main.java.utils.Behavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.lang.System.exit;
 /**
  * Represents a server in the blockchain network.
  * Listens for connections from clients and other blockchain members.
@@ -31,6 +33,9 @@ public class BlockchainNetworkServer {
     private final int id;
     private int timeout;
 
+    //tests
+    private final Behavior behavior;
+
     private final KeyManager keyManager;
     // the following is set based on config
     private ConsensusLoop consensusLoop;
@@ -44,11 +49,12 @@ public class BlockchainNetworkServer {
      * @param serverPort the port number to listen from servers
      * @param clientPort the port number to listen from clients
      */
-    public BlockchainNetworkServer(int serverId, int serverPort, int clientPort) {
+    public BlockchainNetworkServer(int serverId, int serverPort, int clientPort, Behavior behavior) {
         this.id = serverId;
         this.serverPort = serverPort;
         this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
+        this.behavior = behavior;
     }
 
     /**
@@ -57,17 +63,32 @@ public class BlockchainNetworkServer {
      * @param args command line arguments (serverId, serverPort and clientPort)
      */
     public static void main(String[] args) {
-        if (args.length != 3) {
-            logger.error("Usage: java BlockchainNetworkServer <serverId> <serverPort> <clientPort>");
-            System.exit(1);
+        if (args.length > 5 || args.length < 4) {
+            logger.error("Usage: java BlockchainNetworkServer <serverId> <serverPort> <clientPort> <configFile> optional: <behavior>");
+            exit(1);
         }
 
         int serverId = Integer.parseInt(args[0]);
         int serverPort = Integer.parseInt(args[1]);
         int clientPort = Integer.parseInt(args[2]);
+        String configFile = args[3];
+        Behavior behavior = Behavior.CORRECT; // default behavior
 
-        BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort);
-        server.loadConfig();
+        if (args.length == 5) {
+            logger.debug("Got Here"); //TODO: remove
+            String behaviorStr = args[3];
+            logger.debug("Behavior: {}", behaviorStr);
+
+            try {
+                behavior = Behavior.valueOf(behaviorStr);
+            } catch (Exception e) {
+                logger.error("Invalid behavior: {}", behaviorStr);
+                exit(1);
+            }
+        }
+
+        BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort, behavior);
+        server.loadConfig(configFile);
         server.consensusLoop = new ConsensusLoop(server);
         server.consensusThread = new Thread(server.consensusLoop);
         server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
@@ -78,7 +99,7 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop);
+        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop, behavior);
         ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager, consensusLoop);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
         consensusThread.start();
@@ -88,8 +109,8 @@ public class BlockchainNetworkServer {
      * Loads the nodes and clients from the configuration file.
      * Creates the NetworkManager.
      */
-    public void loadConfig() {
-        ConfigLoader config = new ConfigLoader();
+    public void loadConfig(String configFile) {
+        ConfigLoader config = new ConfigLoader(configFile);
 
         int numServers = config.getIntProperty("NUM_SERVERS");
         int numClients = config.getIntProperty("NUM_CLIENTS");

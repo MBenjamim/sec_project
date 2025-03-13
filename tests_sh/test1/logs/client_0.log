@@ -1,0 +1,33 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------< com.example:blockchain-network >-------------------
+[INFO] Building blockchain-network 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ blockchain-network ---
+2025-03-13 23:32:18 INFO  main.java.client.BlockchainClient - Initing Client with serverId: 0 and serverPort: 4000
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file client0/private.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Private key successfully read from file client0/private.key
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server0_public.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server1_public.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server0_public.key
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server1_public.key
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Reading key from file public_keys/server2_public.key...
+2025-03-13 23:32:18 INFO  main.java.crypto_utils.RSAKeyReader - Public key successfully read from file public_keys/server2_public.key
+2025-03-13 23:32:18 INFO  main.java.client.BlockchainClient - Value 'value_to_append' appended to the blockchain with timestamp 0
+[WARNING] 
+java.util.NoSuchElementException: No line found
+    at java.util.Scanner.nextLine (Scanner.java:1677)
+    at main.java.client.BlockchainClient.start (BlockchainClient.java:73)
+    at main.java.client.BlockchainClient.main (BlockchainClient.java:60)
+    at org.codehaus.mojo.exec.ExecJavaMojo.doMain (ExecJavaMojo.java:375)
+    at org.codehaus.mojo.exec.ExecJavaMojo.doExec (ExecJavaMojo.java:364)
+    at org.codehaus.mojo.exec.ExecJavaMojo.lambda$execute$0 (ExecJavaMojo.java:286)
+    at java.lang.Thread.run (Thread.java:1575)
+2025-03-13 23:32:22 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
+2025-03-13 23:32:22 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
+2025-03-13 23:32:24 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
+2025-03-13 23:32:24 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
+2025-03-13 23:32:25 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
+2025-03-13 23:32:25 ERROR m.j.s.ReliableLink - Timed out waiting for ack for message to localhost:3003
