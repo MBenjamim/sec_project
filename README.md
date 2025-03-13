@@ -19,17 +19,30 @@ while the second stage will target the transaction processing layer.
 
 ## Prerequisites
 
-- Java 17 or higher
-- Maven
-- Tmux (for running multiple servers in separate windows)
+- [Java](https://www.java.com) 17 or higher
+- [Maven](https://maven.apache.org)
+- [Tmux](https://github.com/tmux/tmux/wiki) (for running multiple servers in separate windows)
 
 ## Configuration
 
 The configuration for the number of servers and the base port is specified in the `config.cfg` file:
 
 ```properties
-NUM_SERVERS=3
-BASE_PORT=5000
+# for having a faulty process this must be at least 4 (F < N/3)
+NUM_SERVERS=4
+
+NUM_CLIENTS=3
+
+BASE_PORT_SERVER_TO_SERVER=5000
+
+BASE_PORT_CLIENT_TO_SERVER=3000
+
+BASE_PORT_CLIENTS=4000
+
+LEADER_ID=0
+
+# number of relays (1 relay = 200ms) total timeout = 3s
+TIMEOUT=5
 ```
 
 ## Running the Project
@@ -46,9 +59,19 @@ BASE_PORT=5000
 ```
 
 3. **Run the Servers**\
-    Run the run_wsl.sh script to start the servers in separate Tmux windows:
+    Run the run_servers.sh script to start the servers in separate Tmux windows:\
+    To move between windows use `C-b n (Ctrl + B then N)` learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
+
 ```shell
-./run_wsl.sh
+./run_servers.sh
+```
+4. **Run the Clients**\
+   Run the run_servers.sh script to start the servers in separate Tmux windows:\
+   To move between windows use `C-b n (Ctrl + B then N)` learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
+
+```shell
+./run_clients.sh
+#write the string to put in the blockchain
 ```
 
 This script will start the first server in a new Tmux session and additional servers in separate Tmux windows.
@@ -60,6 +83,8 @@ To clean up the generated files and directories, run the `cleanup.sh` script:
 ```
 
 ## Project Structure
+> [!WARNING]  
+> This is not up to date
 ```
 sec_project
 ├── README.md                        # This file

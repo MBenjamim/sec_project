@@ -6,12 +6,16 @@ import java.net.*;
 import java.util.*;
 
 import main.java.signed_reliable_links.ReliableLink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages the network communication of a node.
  */
 @Getter
 public class NetworkManager {
+    private static final Logger logger = LoggerFactory.getLogger(NetworkManager.class);
+
     private final int id;
     private long sentMessages = 0;
     private final int timeout;
@@ -29,10 +33,15 @@ public class NetworkManager {
         this.timeout = timeout;
     }
 
-    public void startCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
+    public void startServerCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
         startListeningForUDP(serverPort, handler1);
         initiateBlockchainNetwork(serverPort, nodes);
         startListeningForUDP(clientPort, handler2);
+    }
+
+    public void startClientCommunications(int port, MessageHandler handler, Collection<NodeRegistry> nodes) {
+        startListeningForUDP(port, handler);
+        initiateBlockchainNetwork(port, nodes);
     }
 
     /**
@@ -45,7 +54,7 @@ public class NetworkManager {
         for (NodeRegistry node : nodes) {
             if (node.getPort() == port)
                 continue;
-            sendMessageThread(new Message(messageId, "CONNECT", id), node);
+            sendMessageThread(new Message(messageId, MessageType.CONNECT, id), node);
         }
     }
 
@@ -58,33 +67,41 @@ public class NetworkManager {
     public void startListeningForUDP(int port, MessageHandler handler) {
         new Thread(() -> {
             try (DatagramSocket udpSocket = new DatagramSocket(port)) {
-                System.out.println("Listening for UDP messages on port " + port + "...");
+                logger.debug("Listening for UDP messages on port {}...", port);
 
                 while (true) {
                     Message receivedMessage = ReliableLink.receiveMessage(udpSocket);
 
                     if (receivedMessage != null) {
-                        handler.parseReceivedMessage(receivedMessage);
+                        handler.parseReceivedMessage(receivedMessage, id);
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Error while listening for UDP messages", e);
             }
         }).start();
     }
 
     /**
-     * Sends a message using authenticated reliable links abstraction
-     * in a separate thread.
+     * Sends a message using authenticated reliable links abstraction in a separate thread.
      *
      * @param message the message to send
      * @param node    the node to send the message to
      */
     public void sendMessageThread(Message message, NodeRegistry node) {
         new Thread(() -> {
-            System.out.println("Sending " + message.getType() + " message to " + node.getIp() + ":" + node.getPort());
+            logger.debug("Sending message: {id:{}, content:\"{}\", type:{}, receiver:{}{}}", message.getId(), message.getContent(), message.getType(), node.getType(), node.getId());
             ReliableLink.sendMessage(message, node, keyManager, timeout);
         }).start();
+    }
+
+    /**
+     * Acknowledges a message in a separate thread.
+     * @param message  the received message to ack
+     * @param sender   the sender of original message (will be receiver of the ack)
+     */
+    public void acknowledgeMessage(Message message, NodeRegistry sender) {
+        sendMessageThread(new Message(message.getId(), MessageType.ACK, id), sender);
     }
 
     /**

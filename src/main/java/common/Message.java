@@ -1,6 +1,5 @@
 package main.java.common;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
@@ -8,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
 
@@ -20,15 +21,23 @@ import java.util.Base64;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Message {
+    private static final Logger logger = LoggerFactory.getLogger(Message.class);
+
     private long id;
     private int sender;
-    private String type;
+    private MessageType type;
     private String content;
-    private boolean received;
+    @JsonIgnore
+    private boolean received = false;
 
     @JsonIgnore
     @ToString.Exclude
     private byte[] signature;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long consensusIdx = null;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Integer epochTS = null;
 
     /**
      * Constructor for the Message class.
@@ -37,12 +46,11 @@ public class Message {
      * @param type    the type of the message
      * @param sender  the unique identifier for the sender
      */
-    public Message(long id, String type, int sender) {
+    public Message(long id, MessageType type, int sender) {
         this.id = id;
         this.type = type;
         this.sender = sender;
         this.content = "";
-        this.received = false;
     }
 
     /**
@@ -53,9 +61,25 @@ public class Message {
      * @param sender  the unique identifier for the sender
      * @param content the content of the message
      */
-    public Message(long id, String type, int sender, String content) {
+    public Message(long id, MessageType type, int sender, String content) {
         this(id, type, sender);
         this.content = content;
+    }
+
+    /**
+     * Constructor for the Message (consensus) class with content.
+     *
+     * @param id           the unique identifier for the message
+     * @param type         the type of the message
+     * @param sender       the unique identifier for the sender
+     * @param content      the content of the message
+     * @param consensusIdx the consensus instance identifier
+     * @param epochTS      the epoch timestamp in the corresponding consensus instance
+     */
+    public Message(long id, MessageType type, int sender, String content, long consensusIdx, int epochTS) {
+        this(id, type, sender, content);
+        this.consensusIdx = consensusIdx;
+        this.epochTS = epochTS;
     }
 
     /**
@@ -65,7 +89,11 @@ public class Message {
      */
     @JsonIgnore
     public String getPropertiesToSign() {
-        return id + "," + type + "," + content;
+        String propertiesToSign = id + "," + type + "," + content;
+        if (consensusIdx != null && epochTS != null) {
+            propertiesToSign += "," + consensusIdx + "," + epochTS;
+        }
+        return propertiesToSign;
     }
 
     /**
@@ -74,11 +102,16 @@ public class Message {
      * @return the JSON string representation of the message
      */
     public String toJson() {
+        String json = null;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.writeValueAsString(this);
+            json = objectMapper.writeValueAsString(this);
+            if (json != null) {
+                objectMapper.readValue(json, Message.class);
+            }
+            return json;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert message to JSON: {}", json, e);
             return null;
         }
     }
@@ -94,7 +127,17 @@ public class Message {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(json, Message.class);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to convert JSON to message: {}", json, e);
+            return null;
+        }
+    }
+
+    public static Message fromJson(String json, boolean ignoreError) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(json, Message.class);
+        } catch (Exception e) {
+            //logger.error("Failed to convert JSON to message: {}", json, e);
             return null;
         }
     }

@@ -3,15 +3,24 @@ package main.java.conditional_collect;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import main.java.common.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Implementation of the ConditionalCollect interface.
  * This class is responsible for collecting proposed values from different processes
  * and filtering them based on a specified condition.
  */
 public class ConditionalCollectImpl implements ConditionalCollect {
-    private final Map<Integer, String> proposedValues = new HashMap<>();
-    private int N; // Total number of processes
-    private int F; // Fault tolerance threshold
+    private static final Logger logger = LoggerFactory.getLogger(ConditionalCollectImpl.class);
+
+    private Map<Integer, Message> states = new HashMap<>();
+    private final int N; // Total number of processes
+    private final int F; // Fault tolerance threshold
+    private boolean collected;
 
     /**
      * Constructor to initialize the ConditionalCollectImpl with the total number of processes (N)
@@ -23,47 +32,40 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     public ConditionalCollectImpl(int N, int F) {
         this.N = N;
         this.F = F;
+        collected = false;
     }
 
-    /**
-     * Adds a proposed value from a process to the collection.
-     *
-     * @param processId The ID of the process proposing the value
-     * @param value The proposed value
-     */
     @Override
-    public void addProposedValue(int processId, String value) {
-        proposedValues.put(processId, value);
+    synchronized public void addValue(int processId, Message value) {
+        if (!collected) {
+            states.put(processId, value);
+        }
     }
 
-    /**
-     * Collects values from the proposed values that meet the specified condition.
-     * Only collects values if the number of proposed values is greater than (N - F).
-     *
-     * @return A map of process IDs to their collected values
-     */
     @Override
-    public Map<Integer, String> collectValues() {
-        Map<Integer, String> collectedValues = new HashMap<>();
-        if (this.proposedValues.size() >= N - F) {
-            for (Map.Entry<Integer, String> entry : proposedValues.entrySet()) {
-                if (checkCondition(entry.getValue())) {
-                    collectedValues.put(entry.getKey(), entry.getValue());
-                }
+    synchronized public String collectValues(int myId) {
+        if (collected) return null;
+        if (states.size() >= N - F && states.get(myId) != null) {
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                String jsonString = objectMapper.writeValueAsString(states);
+                this.states = new HashMap<>();
+                return jsonString;
+            } catch (Exception e) {
+                logger.error("Failed to convert JSON to collected messages map", e);
+                return null;
             }
         }
-        return collectedValues;
+        return null;
     }
 
-    /**
-     * Checks if a value meets the specified condition.
-     * In this implementation, the condition is that the value should not be null or empty.
-     *
-     * @param value The value to check
-     * @return True if the value meets the condition, false otherwise
-     */
     @Override
-    public boolean checkCondition(String value) {
-        return value != null && !value.isEmpty();
+    synchronized public boolean isCollected() {
+        return collected;
+    }
+
+    @Override
+    synchronized public void markAsCollected() {
+        collected = true;
     }
 }

@@ -1,5 +1,8 @@
 package main.java.crypto_utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.*;
@@ -8,6 +11,7 @@ import java.security.*;
  * Utility class for generating RSA key pairs and saving them to files.
  */
 public class RSAKeyGenerator {
+    private static final Logger logger = LoggerFactory.getLogger(RSAKeyGenerator.class);
 
     private static final String ALGORITHM = "RSA";
     private static final int KEY_SIZE = 4096;
@@ -20,7 +24,7 @@ public class RSAKeyGenerator {
      */
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
-            System.err.println("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
+            logger.error("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
             return;
         }
 
@@ -30,7 +34,7 @@ public class RSAKeyGenerator {
         KeyPair keys = generateKeyPair();
         saveKeys(privKeyPath, pubKeyPath, keys);
 
-        System.out.println("Done.");
+        logger.info("Done.");
     }
 
     /**
@@ -40,11 +44,11 @@ public class RSAKeyGenerator {
      * @throws NoSuchAlgorithmException if the RSA algorithm is not available
      */
     public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
-        System.out.println("Generating " + ALGORITHM + " key ..." );
+        logger.info("Generating " + ALGORITHM + " key ..." );
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
         keyGen.initialize(KEY_SIZE);
         KeyPair keys = keyGen.generateKeyPair();
-        System.out.println("Finish generating " + ALGORITHM + " keys");
+        logger.info("Finish generating " + ALGORITHM + " keys");
         return keys;
     }
 
@@ -60,11 +64,11 @@ public class RSAKeyGenerator {
         byte[] privKey = keys.getPrivate().getEncoded();
         byte[] pubKey = keys.getPublic().getEncoded();
 
-        System.out.println("Writing Private key to '" + privKeyPath + "' ..." );
+        logger.info("Writing Private key to '{}' ...", privKeyPath);
         try (FileOutputStream privFos = new FileOutputStream(privKeyPath)) {
             privFos.write(privKey);
         }
-        System.out.println("Writing Public key to '" + pubKeyPath + "' ..." );
+        logger.info("Writing Public key to '{}' ...", pubKeyPath);
         try (FileOutputStream pubFos = new FileOutputStream(pubKeyPath)) {
             pubFos.write(pubKey);
         }

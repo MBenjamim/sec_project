@@ -1,36 +1,40 @@
 package main.java.client;
 
-import main.java.common.ConfigLoader;
-import main.java.common.KeyManager;
-import main.java.common.NetworkManager;
-import main.java.common.NodeRegistry;
+import main.java.common.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a client in the blockchain network.
  * Listens from command line and send messages to the blockchain.
  */
 public class BlockchainClient {
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainClient.class);
+
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
 
-    private final int serverPort;
+    private final int port;
     private final int id;
     private int timeout;
 
     private final KeyManager keyManager;
     private NetworkManager networkManager;
+    private BlockchainConfirmationCollector collector;
 
     /**
      * Constructor for the BlockchainClient class.
      *
      * @param clientId   the unique identifier for the client
-     * @param serverPort the port number to communicate with servers
+     * @param port the port number to communicate with servers
      */
-    public BlockchainClient(int clientId, int serverPort) {
+    public BlockchainClient(int clientId, int port) {
         this.id = clientId;
-        this.serverPort = serverPort;
+        this.port = port;
         this.keyManager = new KeyManager(id, "client");
     }
 
@@ -41,16 +45,17 @@ public class BlockchainClient {
      */
     public static void main(String[] args) {
         if (args.length != 2) {
-            System.err.println("Usage: java BlockchainClient <clientId> <serverPort>");
+            logger.error("Usage: java BlockchainClient <clientId> <serverPort>");
             System.exit(1);
         }
 
-        int serverId = Integer.parseInt(args[0]);
-        int serverPort = Integer.parseInt(args[1]);
-
-        BlockchainClient client = new BlockchainClient(serverId, serverPort);
+        int clientId = Integer.parseInt(args[0]);
+        int port = Integer.parseInt(args[1]);
+        logger.info("Initing Client with serverId: {} and serverPort: {}", clientId, port);
+        BlockchainClient client = new BlockchainClient(clientId, port);
         client.loadConfig();
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
+        client.collector = new BlockchainConfirmationCollector(client.networkNodes.size());
         client.start();
     }
 
@@ -58,8 +63,32 @@ public class BlockchainClient {
      * Starts the client to listen for command line input and connections from blockchain members.
      */
     public void start() {
-        // MessageHandler handler = new MessageHandler();
-        // networkManager.startCommunications(serverPort);
+        ServerMessageHandler serverMessageHandler = new ServerMessageHandler(networkNodes, networkManager, keyManager, collector);
+        networkManager.startClientCommunications(port, serverMessageHandler, networkNodes.values());
+
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            String input = scanner.nextLine().trim();
+            if (input.equalsIgnoreCase("exit")) {
+                logger.info("Exiting...");
+                System.exit(0);
+                break;
+            }
+            // Process the received string
+            processInput(input);
+        }
+    }
+
+    private void processInput(String input) {
+        if (input == null || input.isBlank()) return;
+        logger.debug("Received input: {}", input);
+
+        // Create and send a message to each node with different IDs
+        long messageId = networkManager.generateMessageId();
+        networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(messageId, MessageType.CLIENT_WRITE, id, input), node));
+        long timestamp = collector.waitForConfirmation(input);
+        logger.info("Value '{}' appended to the blockchain with timestamp {}", input, timestamp);
     }
 
     /**
@@ -78,7 +107,7 @@ public class BlockchainClient {
             networkNodes.put(i, new NodeRegistry(i, "server", "localhost", port));
         }
 
-        System.out.println("[CONFIG] Loaded nodes from config:");
-        networkNodes.values().forEach(node -> System.out.println("[CONFIG]" + node.getId() + ": " + node.getIp() + ":" + node.getPort()));
+        logger.debug("[CONFIG] Loaded nodes from config:");
+        networkNodes.values().forEach(node -> logger.debug("[CONFIG] {}{}: {}:{}", node.getType(), node.getId(), node.getIp(), node.getPort()));
     }
 }

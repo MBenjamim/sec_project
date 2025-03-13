@@ -1,5 +1,8 @@
 package main.java.crypto_utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.*;
@@ -11,6 +14,7 @@ import java.security.spec.X509EncodedKeySpec;
  * Utility class for reading RSA keys from files.
  */
 public class RSAKeyReader {
+    private static final Logger logger = LoggerFactory.getLogger(RSAKeyReader.class);
 
     /**
      * Main method for testing the RSAKeyReader.
@@ -20,43 +24,43 @@ public class RSAKeyReader {
      */
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
-            System.err.println("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
+            logger.error("Usage: RSAKeyGenerator <priv-key-file> <pub-key-file>");
             return;
         }
 
         final String privKeyPath = args[0];
         final String pubKeyPath = args[1];
 
-        System.out.println("Private Key:");
+        logger.info("Private Key:");
         PrivateKey privKey = readPrivateKey(privKeyPath);
-        System.out.println("Encoded type '" + privKey.getFormat() + "' ..." );
-        System.out.println(DataUtils.bytesToHex(privKey.getEncoded()));
+        logger.info("Encoded type '{}' ...", privKey.getFormat());
+        logger.info(DataUtils.bytesToHex(privKey.getEncoded()));
 
-        System.out.println("Public Key:");
+        logger.info("Public Key:");
         PublicKey pubKey = readPublicKey(pubKeyPath);
-        System.out.println("Encoded type '" + pubKey.getFormat() + "' ..." );
-        System.out.println(DataUtils.bytesToHex(pubKey.getEncoded()));
+        logger.info("Encoded type '{}' ...", pubKey.getFormat());
+        logger.info(DataUtils.bytesToHex(pubKey.getEncoded()));
 
-        System.out.println("Done.");
+        logger.info("Done.");
     }
 
     /**
      * Reads a private key from a file.
      *
-     * @param privKeyPath the path to the private key file
+     * @param privateKeyPath the path to the private key file
      * @return the private key
      * @throws IOException if an I/O error occurs
      * @throws NoSuchAlgorithmException if the RSA algorithm is not available
      * @throws InvalidKeySpecException if the key specification is invalid
      */
-    public static PrivateKey readPrivateKey(String privKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] encoded = readKey(privKeyPath);
+    public static PrivateKey readPrivateKey(String privateKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+        byte[] encoded = readKey(privateKeyPath);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
 
-        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
-        System.out.println("[KEY] Key successfully read from file " + privKeyPath);
-        return privKey;
+        PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
+        logger.info("Private key successfully read from file {}", privateKeyPath);
+        return privateKey;
     }
 
     /**
@@ -74,7 +78,7 @@ public class RSAKeyReader {
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
 
         PublicKey pubKey = keyFactory.generatePublic(keySpec);
-        System.out.println("[KEY] Key successfully read from file " + pubKeyPath);
+        logger.info("Public key successfully read from file {}", pubKeyPath);
         return pubKey;
     }
 
@@ -86,7 +90,7 @@ public class RSAKeyReader {
      * @throws IOException if an I/O error occurs
      */
     private static byte[] readKey(String keyPath) throws IOException {
-        System.out.println("[KEY] Reading key from file " + keyPath + "...");
+        logger.info("Reading key from file {}...", keyPath);
         byte[] encoded;
         try (FileInputStream fis = new FileInputStream(keyPath)) {
             encoded = new byte[fis.available()];
