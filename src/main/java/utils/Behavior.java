@@ -5,6 +5,6 @@ public enum Behavior {
     NO_RESPONSE_TO_ALL_SERVERS,
     NO_RESPONSE_TO_LEADER,
     WRONG_WRITE,
-    WRONG_READ,
+    WRONG_READ_RESPONSE,
     DELAY,
 }

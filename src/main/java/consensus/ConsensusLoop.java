@@ -61,8 +61,8 @@ public class ConsensusLoop implements Runnable {
         State state = consensus.checkLeaderAndGetState(epochTS, leaderId);
 
         if (state != null) {
-            if (this.behavior == Behavior.WRONG_READ) {
-                logger.debug("\n\nI am Byzantine and I will corrupt the READ messages\n");
+            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
+                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
                 Block curruptedBlock = new Block("Corrupted", 0);
                 state.setValue(curruptedBlock);
             }
