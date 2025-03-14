@@ -43,7 +43,7 @@ echo "    Number of servers: $NUM_SERVERS"
 echo "    Number of clients: $NUM_CLIENTS"
 echo "    Number of Byzantine processes: $NUM_BYZANTINE"
 echo "    Leader ID: $LEADER_ID"
-echo "    Byzantine behavior: NO_RESPONSE_TO_ALL_SERVERS"
+echo "    Byzantine behavior: $BEHAVIOR"
 
 # Function to kill background processes and clean up
 cleanup() {
