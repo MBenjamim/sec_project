@@ -3,90 +3,64 @@ package main.java.crypto_utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.spec.SecretKeySpec;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import javax.crypto.*;
 
 /**
- * Utility class for generating and saving AES keys.
+ * Utility class for generating AES keys and IVs.
  */
 public class AESKeyGenerator {
     private static final Logger logger = LoggerFactory.getLogger(AESKeyGenerator.class);
 
+    private static final String ALGORITHM = "AES";
+    private static final int KEY_SIZE = 128;
+    private static final int IV_SIZE = 16;
 
     /**
-     * Main method for generating and saving or loading AES keys.
+     * Main method for generating AES keys or IVs.
      *
-     * @param args command line arguments (mode and key file path)
-     * @throws Exception if an error occurs while generating or saving/loading the keys
+     * @param args command line arguments (mode)
+     * @throws Exception if an error occurs while generating keys
      */
     public static void main(String[] args) throws Exception {
-
-        // check args
-        if (args.length != 2) {
-            logger.error("Usage: AESKeyGenerator [r|w] <key-file>");
+        if (args.length != 1) {
+            logger.error("Usage: AESKeyGenerator <key|iv>");
             return;
         }
 
-        final String mode = args[0];
-        final String keyPath = args[1];
-
-        if (mode.toLowerCase().startsWith("w")) {
-            logger.info("Generate and save keys");
-            write(keyPath);
-        } else {
-            logger.info("Load keys");
-            read(keyPath);
-        }
-
-        logger.info("Done.");
-    }
-
-    /**
-     * Generates an AES key and saves it to a file.
-     *
-     * @param keyPath the path to the key file
-     * @throws GeneralSecurityException if a security error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    public static void write(String keyPath) throws GeneralSecurityException, IOException {
-        // get an AES private key
-        logger.info("Generating AES key ...");
-        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-        keyGen.init(128);
-        Key key = keyGen.generateKey();
-        logger.info("Finish generating AES key");
-        byte[] encoded = key.getEncoded();
-        logger.info("Key:");
-        logger.info(DataUtils.bytesToHex(encoded));
-
-        logger.info("Writing key to '{}' ...", keyPath);
-
-        try (FileOutputStream fos = new FileOutputStream(keyPath)) {
-            fos.write(encoded);
+        final String mode = args[0].toLowerCase();
+        switch (mode) {
+            case "key":
+                logger.info("Secret Key");
+                SecretKey key = generateKey();
+                logger.info("Encoded type '{}'", key.getFormat());
+                logger.info(DataUtils.bytesToHex(key.getEncoded()));
+                break;
+            case "iv":
+                logger.info("Initialization Vector");
+                byte[] iv = generateIV();
+                logger.info(DataUtils.bytesToHex(iv));
+                break;
+            default:
+                logger.error("Unrecognized mode: {}", mode);
+                logger.error("Usage: AESKeyGenerator <key|iv>");
         }
     }
 
-    /**
-     * Reads an AES key from a file.
-     *
-     * @param keyPath the path to the key file
-     * @return the AES key
-     * @throws GeneralSecurityException if a security error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    public static Key read(String keyPath) throws GeneralSecurityException, IOException {
-        logger.info("Reading key from file {} ...", keyPath);
-        byte[] encoded;
-        try (FileInputStream fis = new FileInputStream(keyPath)) {
-            encoded = new byte[fis.available()];
-            fis.read(encoded);
-        }
+    public static SecretKey generateKey() throws NoSuchAlgorithmException {
+        logger.info("Generating " + ALGORITHM + " key ..." );
+        KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
+        keyGen.init(KEY_SIZE);
+        SecretKey key = keyGen.generateKey();
+        logger.info("Finish generating " + ALGORITHM + " keys");
+        return key;
+    }
 
-        return new SecretKeySpec(encoded, 0, 16, "AES");
+    public static byte[] generateIV() {
+        byte[] iv = new byte[IV_SIZE];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(iv);
+        return iv;
     }
 }

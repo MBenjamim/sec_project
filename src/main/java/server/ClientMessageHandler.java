@@ -41,12 +41,12 @@ public class ClientMessageHandler implements MessageHandler {
             if (!ReliableLink.verifyMessage(message, sender, receiverId, keyManager)) {
                 return;
             }
-            processMessage(message, sender);
+            handleMessage(message, sender);
         }).start();
     }
 
     @Override
-    public void processMessage(Message message, NodeRegistry sender) {
+    public void handleMessage(Message message, NodeRegistry sender) {
         logger.info("Processing message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
         boolean firstTime;
         switch (message.getType()) {

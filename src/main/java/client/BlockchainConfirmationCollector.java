@@ -13,7 +13,7 @@ public class BlockchainConfirmationCollector {
     private final Logger logger = LoggerFactory.getLogger(BlockchainConfirmationCollector.class);
     private Map<Integer, String> collectedValues = new HashMap<>();
     private Map<Integer, Long> collectedTimestamps = new HashMap<>();
-    private List<Long> collectedConfirmations = new ArrayList<>();
+    private final List<Long> collectedConfirmations = new ArrayList<>();
     private final int N; // total number of servers
     private final int F; // maximum faulty servers
 

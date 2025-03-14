@@ -3,6 +3,7 @@ package main.java.server;
 import main.java.common.*;
 import main.java.consensus.ConsensusLoop;
 import main.java.signed_reliable_links.ReliableLink;
+import main.java.utils.Behavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,8 @@ public class NetworkServerMessageHandler implements MessageHandler {
     private final KeyManager keyManager;
     private final ConsensusLoop consensusLoop;
 
+    private final Behavior behavior;
+
     /**
      * Constructor for the NodeHandler class.
      *
@@ -27,11 +30,14 @@ public class NetworkServerMessageHandler implements MessageHandler {
      * @param keyManager     to verify signatures
      * @param consensusLoop  to eventually agree on a block to be added to the blockchain
      */
-    public NetworkServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
+    public NetworkServerMessageHandler(Map<Integer, NodeRegistry> networkNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop, Behavior behavior) {
         this.networkNodes = networkNodes;
         this.networkManager = networkManager;
         this.keyManager = keyManager;
         this.consensusLoop = consensusLoop;
+
+        //tests
+        this.behavior = behavior;
     }
 
     @Override
@@ -41,13 +47,43 @@ public class NetworkServerMessageHandler implements MessageHandler {
             if (!ReliableLink.verifyMessage(message, sender, receiverId, keyManager)) {
                 return;
             }
-            processMessage(message, sender);
+            handleMessage(message, sender);
         }).start();
     }
 
     @Override
+    public void handleMessage(Message message, NodeRegistry sender) {
+        logger.info("Handling message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
+
+        switch (this.behavior){
+            case CORRECT:
+                logger.debug("\n\nI am Correct and I will respond to all server messages\n");
+                processMessage(message, sender);
+                break;
+            case NO_RESPONSE_TO_ALL_SERVERS:
+                logger.info("\n\nI am Byzantine and I will not respond to any server message\n");
+                return;
+            case NO_RESPONSE_TO_LEADER:
+                if (sender.getId() == 1){
+                    logger.info("\n\nI am Byzantine and I will not respond to the server{} message\n", sender.getId());
+                    return;
+                }
+                processMessage(message, sender);
+                break;
+            case DELAY:
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    logger.error("Error while delaying message in byzantine process", e);
+                }
+                break;
+            default:
+                processMessage(message, sender);
+                break;
+        }
+    }
+
     public void processMessage(Message message, NodeRegistry sender) {
-        logger.info("Processing message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
         boolean firstTime;
         switch (message.getType()) {
             case ACK:
