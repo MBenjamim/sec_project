@@ -76,7 +76,7 @@ public class BlockchainNetworkServer {
 
         if (args.length == 5) {
             logger.debug("Got Here"); //TODO: remove
-            String behaviorStr = args[3];
+            String behaviorStr = args[4];
             logger.debug("Behavior: {}", behaviorStr);
 
             try {
@@ -89,7 +89,7 @@ public class BlockchainNetworkServer {
 
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort, behavior);
         server.loadConfig(configFile);
-        server.consensusLoop = new ConsensusLoop(server);
+        server.consensusLoop = new ConsensusLoop(server, behavior);
         server.consensusThread = new Thread(server.consensusLoop);
         server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
         server.start();

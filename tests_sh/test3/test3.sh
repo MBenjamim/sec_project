@@ -1,7 +1,7 @@
 #!/bin/bash
 
-TN=1
-BEHAVIOR=NO_RESPONSE_TO_ALL_SERVERS
+TN=3
+BEHAVIOR=WRONG_WRITE
 
 TEST_DIR="tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"

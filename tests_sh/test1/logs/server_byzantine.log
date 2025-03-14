@@ -1,9 +1,0 @@
-[INFO] Scanning for projects...
-[INFO] 
-[INFO] -------------------< com.example:blockchain-network >-------------------
-[INFO] Building blockchain-network 1.0-SNAPSHOT
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-[INFO] 
-[INFO] --- exec:3.5.0:java (default-cli) @ blockchain-network ---
-2025-03-13 23:32:13 ERROR m.j.server.BlockchainNetworkServer - Invalid behavior: tests_sh/test1/test1_config.cfg

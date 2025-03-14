@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TN=1
+TN=4
 BEHAVIOR=NO_RESPONSE_TO_ALL_SERVERS
 
 TEST_DIR="tests_sh/test${TN}"

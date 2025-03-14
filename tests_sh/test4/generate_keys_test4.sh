@@ -1,7 +1,7 @@
 #!/bin/bash
 
-TEST_DIR="tests_sh/test1"
-CONFIG_FILE="$TEST_DIR/test1_config.cfg"
+TEST_DIR="tests_sh/test4"
+CONFIG_FILE="$TEST_DIR/test4_config.cfg"
 
 # shellcheck disable=SC1090
 source $CONFIG_FILE

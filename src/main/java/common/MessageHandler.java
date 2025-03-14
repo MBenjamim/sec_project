@@ -16,5 +16,5 @@ public interface MessageHandler {
      * @param message the received message
      * @param sender  the node that sent the message
      */
-    void processMessage(Message message, NodeRegistry sender);
+    void handleMessage(Message message, NodeRegistry sender);
 }

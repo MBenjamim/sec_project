@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import main.java.common.Message;
+import main.java.utils.Behavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,16 +28,20 @@ public class Consensus {
     private final int F; // Fault tolerance threshold
     private int currTS;
 
+    //tests
+    private final Behavior behavior;
+
     /**
      * Constructor to initialize the Consensus with the total number of processes and leader identifier.
      *
      * @param N Total number of processes
      */
-    public Consensus(int N) {
+    public Consensus(int N, Behavior behavior) {
         this.N = N;
         this.F = (N - 1) / 3;
         this.currTS = 0;
         this.state = new State();
+        this.behavior = behavior;
     }
     
     /**
@@ -159,10 +164,18 @@ public class Consensus {
         for (State state : collectedStates) {
             if (state == null || !state.checkValid(nrClients)) continue;
 
-            Block value = determineValueFromState(state, collectedStates, leaderState);
-            if (value != null) {
-                updateStateAndEpochTS(epochTS, value, false);
-                return value;
+            Block block = determineValueFromState(state, collectedStates, leaderState);
+
+            if (block != null) {
+                //tests
+                if (this.behavior == Behavior.WRONG_WRITE) {
+                    logger.info("\nI am byzantine and I will write a wrong block\n");
+                    String originalValue = block.getValue();
+                    String newValue = originalValue + "WRONG";
+                    block.setValue(newValue);
+                }
+                updateStateAndEpochTS(epochTS, block, false);
+                return block;
             }
         }
         return null;
