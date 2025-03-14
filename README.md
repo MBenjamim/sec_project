@@ -88,6 +88,8 @@ To test the project, run the `test_all.sh` script:
 ```shell
 ./test_all.sh
 ```
+Note: The waiting time per test may need to be adjusted depending on the number of processes, network latency and computation power.
+      you can change the waiting time in the `tests_sh/test<n>/test<n>_config.cfg` config file using `SLEEP_TIME`.
 ### Description
 The tests are in the `tests_sh directory`. Here you will find the following tests:
 

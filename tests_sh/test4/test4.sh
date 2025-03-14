@@ -3,10 +3,10 @@
 TN=4
 BEHAVIOR=WRONG_READ_RESPONSE
 
-TEST_DIR="tests_sh/test${TN}"
+TEST_DIR="./tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"
 LOG_DIR="$TEST_DIR/logs"
-TMP_DIR="$TEST_DIR/tmp"
+TMP_DIR="/tmp"
 
 
 # shellcheck disable=SC1090
@@ -58,11 +58,6 @@ cleanup() {
         rm -f "$TMP_DIR/blockchain_client_fifo_$i"
     done
 
-    # Remove the tmp directory if it exists
-    if [ -d "$TMP_DIR" ]; then
-        rm -rf "$TMP_DIR"
-    fi
-
     bash $TEST_DIR/cleanup_test${TN} > /dev/null 2>&1
 }
 trap cleanup EXIT
@@ -113,7 +108,8 @@ for ((i=0; i<NUM_CLIENTS; i++)); do
 done
 
 # Wait for the system to process the input
-sleep 10
+printf "Sleeping for %d seconds to allow the system to process the input...\n" "$SLEEP_TIME"
+sleep "$SLEEP_TIME"
 
 # Check the log files for the expected log entry
 ALL_PASSED=true
