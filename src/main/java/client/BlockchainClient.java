@@ -4,6 +4,7 @@ import main.java.common.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import org.slf4j.Logger;
@@ -44,16 +45,17 @@ public class BlockchainClient {
      * @param args command line arguments (serverId and serverPort)
      */
     public static void main(String[] args) {
-        if (args.length != 2) {
-            logger.error("Usage: java BlockchainClient <clientId> <serverPort>");
+        if (args.length != 3) {
+            logger.error("Usage: java BlockchainClient <clientId> <serverPort> <configFile>");
             System.exit(1);
         }
 
         int clientId = Integer.parseInt(args[0]);
         int port = Integer.parseInt(args[1]);
+        String configFile = args[2];
         logger.info("Initing Client with serverId: {} and serverPort: {}", clientId, port);
         BlockchainClient client = new BlockchainClient(clientId, port);
-        client.loadConfig();
+        client.loadConfig(configFile);
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
         client.collector = new BlockchainConfirmationCollector(client.networkNodes.size());
         client.start();
@@ -69,14 +71,20 @@ public class BlockchainClient {
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
-            String input = scanner.nextLine().trim();
-            if (input.equalsIgnoreCase("exit")) {
-                logger.info("Exiting...");
-                System.exit(0);
-                break;
+            try {
+                String input = scanner.nextLine().trim();
+                if (input.equalsIgnoreCase("exit")) {
+                    logger.info("Exiting...");
+                    System.exit(0);
+                    break;
+                }
+                // Process the received string
+                processInput(input);
+            } catch (NoSuchElementException e) {
+                // This exception is thrown when testing because there is no terminal
+            }catch (Exception e) {
+                logger.error("Error reading input: {}", e.getMessage());
             }
-            // Process the received string
-            processInput(input);
         }
     }
 
@@ -95,8 +103,8 @@ public class BlockchainClient {
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
      */
-    public void loadConfig() {
-        ConfigLoader config = new ConfigLoader();
+    public void loadConfig(String configFile) {
+        ConfigLoader config = new ConfigLoader(configFile);
 
         int numServers = config.getIntProperty("NUM_SERVERS");
         int basePort = config.getIntProperty("BASE_PORT_CLIENT_TO_SERVER");

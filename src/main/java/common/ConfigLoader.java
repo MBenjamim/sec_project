@@ -13,14 +13,15 @@ import java.util.Properties;
 public class ConfigLoader {
     private static final Logger logger = LoggerFactory.getLogger(ConfigLoader.class);
 
-    private static final String CONFIG_FILE = "config.cfg";
+    private final String CONFIG_FILE;
     private final Properties config;
 
     /**
      * Constructor for the ConfigLoader class.
      * Loads the configuration from the file.
      */
-    public ConfigLoader() {
+    public ConfigLoader(String configFile) {
+        this.CONFIG_FILE = configFile;
         this.config = new Properties();
         loadConfig();
     }

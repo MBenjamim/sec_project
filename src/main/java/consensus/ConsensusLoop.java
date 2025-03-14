@@ -8,6 +8,7 @@ import java.util.Map;
 import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.server.BlockchainNetworkServer;
+import main.java.utils.Behavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,14 +23,18 @@ public class ConsensusLoop implements Runnable {
     private final Map<Long, Block> blockchain = new HashMap<>();
     private final BlockchainNetworkServer server;
 
+    //tests
+    private final Behavior behavior;
+
     private final int N; // Total number of processes (fault tolerance threshold can be calculated by (N - 1) / 3)
     private long currIndex;
     private boolean inConsensus;
 
-    public ConsensusLoop(BlockchainNetworkServer server) {
+    public ConsensusLoop(BlockchainNetworkServer server, Behavior behavior) {
         this.currIndex = 0;
         this.inConsensus = false;
         this.server = server;
+        this.behavior = behavior;
         this.N = server.getNetworkNodes().size();
     }
 
@@ -56,6 +61,11 @@ public class ConsensusLoop implements Runnable {
         State state = consensus.checkLeaderAndGetState(epochTS, leaderId);
 
         if (state != null) {
+            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
+                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
+                Block curruptedBlock = new Block("Corrupted", 0);
+                state.setValue(curruptedBlock);
+            }
             Message response =
                     new Message(server.generateMessageId(), MessageType.STATE, server.getId(),
                             state.toJson(), consensusIndex, epochTS);
@@ -225,7 +235,7 @@ public class ConsensusLoop implements Runnable {
      */
     synchronized public Consensus getConsensusInstance(long index) {
         if (!consensusInstances.containsKey(index)) {
-            Consensus consensus = new Consensus(N);
+            Consensus consensus = new Consensus(N, behavior);
             consensusInstances.put(index, consensus);
             return consensus;
         }

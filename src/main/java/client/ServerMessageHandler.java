@@ -39,12 +39,12 @@ public class ServerMessageHandler implements MessageHandler {
             if (!ReliableLink.verifyMessage(message, sender, receiverId, keyManager)) {
                 return;
             }
-            processMessage(message, sender);
+            handleMessage(message, sender);
         }).start();
     }
 
     @Override
-    public void processMessage(Message message, NodeRegistry sender) {
+    public void handleMessage(Message message, NodeRegistry sender) {
         logger.debug("Processing message: id:{} content:\"{}\" type:{} sender:{}{}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
         switch (message.getType()) {
             case ACK:
