@@ -1,5 +1,7 @@
 package main.java.crypto_utils;
 
+import java.nio.ByteBuffer;
+
 /**
  * Utility class for data conversion operations.
  */
@@ -20,5 +22,15 @@ public final class DataUtils {
             hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    /**
+     * Converts an integer to a byte array.
+     *
+     * @param value the integer value to convert
+     * @return the byte array representation of the integer
+     */
+    public static byte[] intToBytes(int value) {
+        return ByteBuffer.allocate(4).putInt(value).array();
     }
 }

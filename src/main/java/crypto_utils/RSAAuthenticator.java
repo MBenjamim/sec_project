@@ -3,7 +3,6 @@ package main.java.crypto_utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.security.*;
 
 /**
@@ -11,6 +10,8 @@ import java.security.*;
  */
 public class RSAAuthenticator {
     private static final Logger logger = LoggerFactory.getLogger(RSAAuthenticator.class);
+
+    private static final String ALGORITHM = "SHA256withRSA";
 
     /**
      * Signs a message using the private key.
@@ -25,18 +26,18 @@ public class RSAAuthenticator {
      * @throws SignatureException       if an error occurs during signing
      */
     public static byte[] signMessage(PrivateKey privateKey, int senderId, int receiverId, byte[] message) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        Signature signature = Signature.getInstance("SHA256withRSA");
+        Signature signature = Signature.getInstance(ALGORITHM);
         signature.initSign(privateKey);
 
-        signature.update(intToBytes(senderId));
-        signature.update(intToBytes(receiverId));
+        signature.update(DataUtils.intToBytes(senderId));
+        signature.update(DataUtils.intToBytes(receiverId));
         signature.update(message);
 
         return signature.sign();
     }
 
     /**
-     * Verifies the signature of a message.
+     * Verifies the signature of a message using the public key.
      *
      * @param publicKey  the public key to verify the signature with
      * @param senderId   the unique identifier for the sender
@@ -49,23 +50,13 @@ public class RSAAuthenticator {
      * @throws SignatureException       if an error occurs during verification
      */
     public static boolean verifySignature(PublicKey publicKey, int senderId, int receiverId, byte[] message, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-        Signature verifier = Signature.getInstance("SHA256withRSA");
+        Signature verifier = Signature.getInstance(ALGORITHM);
         verifier.initVerify(publicKey);
 
-        verifier.update(intToBytes(senderId));
-        verifier.update(intToBytes(receiverId));
+        verifier.update(DataUtils.intToBytes(senderId));
+        verifier.update(DataUtils.intToBytes(receiverId));
         verifier.update(message);
 
         return verifier.verify(signature);
-    }
-
-    /**
-     * Converts an integer to a byte array.
-     *
-     * @param value the integer value to convert
-     * @return the byte array representation of the integer
-     */
-    private static byte[] intToBytes(int value) {
-        return ByteBuffer.allocate(4).putInt(value).array();
     }
 }
