@@ -83,12 +83,12 @@ public class Message {
     }
 
     /**
-     * Retrieves the properties of the message to be signed.
+     * Retrieves the properties of the message to be authenticated.
      *
-     * @return a string representation of the properties to be signed
+     * @return a string representation of the properties to be authenticated
      */
     @JsonIgnore
-    public String getPropertiesToSign() {
+    public String getPropertiesToAuthenticate() {
         String propertiesToSign = id + "," + type + "," + content;
         if (consensusIdx != null && epochTS != null) {
             propertiesToSign += "," + consensusIdx + "," + epochTS;
@@ -145,7 +145,7 @@ public class Message {
     /**
      * Retrieves the hmac or signature as a Base64 encoded string.
      *
-     * @return the Base64 encoded string representation of the signature
+     * @return the Base64 encoded string representation of the hmac or signature
      */
     @JsonProperty("authenticationField")
     public String getAuthenticationFieldBase64() {

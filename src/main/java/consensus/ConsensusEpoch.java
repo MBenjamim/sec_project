@@ -2,7 +2,6 @@ package main.java.consensus;
 
 import lombok.Getter;
 import lombok.Setter;
-import main.java.common.Message;
 import main.java.conditional_collect.ConditionalCollect;
 import main.java.conditional_collect.ConditionalCollectImpl;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ public class ConsensusEpoch {
         this.collector = new ConditionalCollectImpl(N, F);
     }
 
-    public void addToCollector(int sender, Message state) {
+    public void addToCollector(int sender, State state) {
         collector.addValue(sender, state);
     }
 

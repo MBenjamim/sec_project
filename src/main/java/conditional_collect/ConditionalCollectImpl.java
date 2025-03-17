@@ -5,7 +5,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import main.java.common.Message;
+import main.java.consensus.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public class ConditionalCollectImpl implements ConditionalCollect {
     private static final Logger logger = LoggerFactory.getLogger(ConditionalCollectImpl.class);
 
-    private Map<Integer, Message> states = new HashMap<>();
+    private Map<Integer, State> states = new HashMap<>();
     private final int N; // Total number of processes
     private final int F; // Fault tolerance threshold
     private boolean collected;
@@ -36,7 +36,7 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     }
 
     @Override
-    synchronized public void addValue(int processId, Message value) {
+    synchronized public void addValue(int processId, State value) {
         if (!collected) {
             states.put(processId, value);
         }

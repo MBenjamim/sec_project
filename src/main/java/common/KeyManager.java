@@ -6,6 +6,7 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.util.Base64;
 
+import main.java.consensus.State;
 import main.java.crypto_utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class KeyManager {
      */
     public byte[] authenticateMessage(Message message, NodeRegistry node) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int receiverId = node.getId();
-        byte[] messageBytes = message.getPropertiesToSign().getBytes();
+        byte[] messageBytes = message.getPropertiesToAuthenticate().getBytes();
 
         byte[] authentication;
         if (MessageType.CONNECT.equals(message.getType())) { // only CONNECT messages are signed
@@ -79,7 +80,7 @@ public class KeyManager {
      */
     public boolean verifyMessage(Message message, NodeRegistry senderNode, int receiverId) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         int senderId = senderNode.getId();
-        byte[] messageBytes = message.getPropertiesToSign().getBytes();
+        byte[] messageBytes = message.getPropertiesToAuthenticate().getBytes();
         byte[] authenticationField = message.getAuthenticationField();
 
         if (MessageType.CONNECT.equals(message.getType())) { // only CONNECT messages are signed
@@ -89,10 +90,52 @@ public class KeyManager {
     }
 
     /**
+     * Signs a state using the private key.
+     *
+     * @param state        the state to sign
+     * @param processId    the ID of the process signing the state
+     * @param consensusIdx the index of the consensus instance
+     * @param epochTS      the timestamp of the epoch
+     * @return the signed state as a byte array
+     * @throws NoSuchAlgorithmException if the algorithm is not available
+     * @throws SignatureException       if an error occurs during signing
+     * @throws InvalidKeyException      if the key is invalid
+     */
+    public byte[] signState(State state, int processId, long consensusIdx, int epochTS) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        byte[] stateBytes = state.getPropertiesToSign().getBytes();
+
+        byte[] signature = RSAAuthenticator.signState(privateKey, processId, consensusIdx, epochTS, stateBytes);
+
+        state.setSignature(signature);
+        return state.toJson().getBytes();
+    }
+
+    /**
+     * Verifies the signature of a state.
+     *
+     * @param state        the state to verify
+     * @param process      the process that signed the state
+     * @param consensusIdx the index of the consensus instance
+     * @param epochTS      the timestamp of the epoch
+     * @return true if the state is valid, false otherwise
+     * @throws NoSuchAlgorithmException if the algorithm is not available
+     * @throws SignatureException       if an error occurs during verification
+     * @throws InvalidKeyException      if the key is invalid
+     */
+    public boolean verifyState(State state, NodeRegistry process, long consensusIdx, int epochTS) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        int processId = process.getId();
+        byte[] stateBytes = state.getPropertiesToSign().getBytes();
+        byte[] signature = state.getSignature();
+
+        return RSAAuthenticator.verifyState(process.getPublicKey(), processId, consensusIdx, epochTS, stateBytes, signature);
+    }
+
+    /**
      * Generates a session key and encrypts it using the receiver's public key.
      * Set the session key for the specified node (the receiver).
      *
-     * @param node the node to which the session key will be sent
+     * @param node   the node to which the session key will be sent
+     * @param twoWay if true indicates the session is two-way, otherwise means it is one-way
      * @return encrypted session key as a Base64-encoded string
      * @throws NoSuchAlgorithmException  if the algorithm is not available
      * @throws NoSuchPaddingException    if the padding scheme is unavailable
@@ -100,9 +143,10 @@ public class KeyManager {
      * @throws BadPaddingException       if the padding scheme used in the decryption is invalid
      * @throws InvalidKeyException       if the provided key is invalid
      */
-    public String generateSessionKey(NodeRegistry node) throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
+    public String generateSessionKey(NodeRegistry node, boolean twoWay) throws NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         SecretKey sessionKey = AESKeyGenerator.generateKey();
         node.setRecvSessionKey(sessionKey);
+        if (twoWay) node.setSendSessionKey(sessionKey);
         byte[] encryptedKey = RSAKeyProtector.encryptSecretKey(node.getPublicKey(), sessionKey);
         return Base64.getEncoder().encodeToString(encryptedKey);
     }

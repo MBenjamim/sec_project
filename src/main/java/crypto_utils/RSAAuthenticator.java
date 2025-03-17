@@ -59,4 +59,28 @@ public class RSAAuthenticator {
 
         return verifier.verify(signature);
     }
+
+    public static byte[] signState(PrivateKey privateKey, int processId, long consensusIdx, int epochTS, byte[] state) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature signature = Signature.getInstance(ALGORITHM);
+        signature.initSign(privateKey);
+
+        signature.update(DataUtils.intToBytes(processId));
+        signature.update(DataUtils.longToBytes(consensusIdx));
+        signature.update(DataUtils.intToBytes(epochTS));
+        signature.update(state);
+
+        return signature.sign();
+    }
+
+    public static boolean verifyState(PublicKey publicKey, int processId, long consensusIdx, int epochTS, byte[] state, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature verifier = Signature.getInstance(ALGORITHM);
+        verifier.initVerify(publicKey);
+
+        verifier.update(DataUtils.intToBytes(processId));
+        verifier.update(DataUtils.longToBytes(consensusIdx));
+        verifier.update(DataUtils.intToBytes(epochTS));
+        verifier.update(state);
+
+        return verifier.verify(signature);
+    }
 }

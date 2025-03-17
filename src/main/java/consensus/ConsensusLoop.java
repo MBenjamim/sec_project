@@ -7,6 +7,7 @@ import java.util.Map;
 
 import main.java.common.Message;
 import main.java.common.MessageType;
+import main.java.common.NodeRegistry;
 import main.java.server.BlockchainNetworkServer;
 import main.java.utils.Behavior;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class ConsensusLoop implements Runnable {
 
     /**
      * Process a READ message received from a server should be sent by leader.
-     * Sends to leader the current STATE of consensus instance.
+     * Sends to leader the current STATE of consensus instance signed.
      *
      * @param message the message to be processed
      */
@@ -66,15 +67,20 @@ public class ConsensusLoop implements Runnable {
                 Block curruptedBlock = new Block("Corrupted", 0);
                 state.setValue(curruptedBlock);
             }
-            Message response =
-                    new Message(server.generateMessageId(), MessageType.STATE, server.getId(),
-                            state.toJson(), consensusIndex, epochTS);
-            server.sendConsensusResponse(response, leaderId);
+            try {
+                server.getKeyManager().signState(state, server.getId(), consensusIndex, epochTS);
+                Message response =
+                        new Message(server.generateMessageId(), MessageType.STATE, server.getId(),
+                                state.toJson(), consensusIndex, epochTS);
+                server.sendConsensusResponse(response, leaderId);
+            } catch (Exception e) {
+                logger.error("Failed to sign state in response to read message from leaderId: {}", leaderId, e);
+            }
         }
     }
 
      /**
-     * Process a STATE message received from a server, done only by the LEADER.
+     * Process a STATE message received from a server, done only by the LEADER, verifies the signature.
      * It collects the state and if enough states are collected, it broadcasts the COLLECTED states.
      * 
      * @param message the message to be processed
@@ -82,9 +88,10 @@ public class ConsensusLoop implements Runnable {
     synchronized public void processStateMessage(Message message) {
         long consensusIndex = message.getConsensusIdx();
         int epochTS = message.getEpochTS();
+        NodeRegistry senderNode = server.getNetworkNodes().get(message.getSender());
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        String collectedStates = consensus.collectStateAndGetIfEnough(epochTS, message, server.getId());
+        String collectedStates = consensus.collectStateAndGetIfEnough(epochTS, message.getContent(), server.getId(), server.getKeyManager(), senderNode);
 
         if (collectedStates != null) {
             server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.COLLECTED, collectedStates);
@@ -102,27 +109,27 @@ public class ConsensusLoop implements Runnable {
         int epochTS = message.getEpochTS();
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        Map<Integer, Message> collectedMessages = consensus.getCollectedMessages(epochTS, message.getSender(), message.getContent());
-        if(collectedMessages == null) {
+        Map<Integer, State> collectedStates = consensus.getCollectedStates(epochTS, message.getSender(), message.getContent());
+        if(collectedStates == null) {
             return;
         }
 
-        List<State> collectedStates = new ArrayList<>();
+        List<State> validStates = new ArrayList<>();
         State leaderState = null;
 
         // Check if the state was tampered and if not add it to the list of collected states
         int leaderId = message.getSender();
-        for (Map.Entry<Integer, Message> entry : collectedMessages.entrySet()) {
+        for (Map.Entry<Integer, State> entry : collectedStates.entrySet()) {
             int serverId = entry.getKey();
-            Message collectedMessage = entry.getValue();
+            State collectedState = entry.getValue();
+            NodeRegistry processNode = server.getNetworkNodes().get(serverId);
             try {
-                if (!server.getKeyManager().verifyMessage(collectedMessage, server.getNetworkNodes().get(serverId), leaderId)) {
+                if (!server.getKeyManager().verifyState(collectedState, processNode, consensusIndex, epochTS)) {
                     return;
                 }
-                State state = State.fromJson(collectedMessage.getContent());
-                collectedStates.add(state);
-                if (serverId == message.getSender()) {
-                    leaderState = state;
+                validStates.add(collectedState);
+                if (serverId == leaderId) {
+                    leaderState = collectedState;
                 }
             } catch (Exception e) {
                 logger.error("Failed to verify signature for collected message", e);
@@ -132,7 +139,7 @@ public class ConsensusLoop implements Runnable {
 
         logger.debug("Verified all signatures and have enough STATE messages: {}", collectedStates.size());
 
-        Block toWrite = consensus.determineValueToWrite(epochTS, collectedStates, leaderState, server.getNetworkClients().size());
+        Block toWrite = consensus.determineValueToWrite(epochTS, validStates, leaderState, server.getNetworkClients().size());
         if (toWrite == null) {
             logger.error("ABORTED: consensus instance={}; consensus epoch={}; by message:\n{}", consensusIndex, epochTS, message); // FIXME: abort
         } else {
@@ -235,7 +242,7 @@ public class ConsensusLoop implements Runnable {
      */
     synchronized public Consensus getConsensusInstance(long index) {
         if (!consensusInstances.containsKey(index)) {
-            Consensus consensus = new Consensus(N, behavior);
+            Consensus consensus = new Consensus(index, N, behavior);
             consensusInstances.put(index, consensus);
             return consensus;
         }

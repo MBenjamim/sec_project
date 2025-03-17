@@ -31,6 +31,16 @@ public final class DataUtils {
      * @return the byte array representation of the integer
      */
     public static byte[] intToBytes(int value) {
-        return ByteBuffer.allocate(4).putInt(value).array();
+        return ByteBuffer.allocate(Integer.BYTES).putInt(value).array();
+    }
+
+    /**
+     * Converts a long to a byte array.
+     *
+     * @param value the long value to convert
+     * @return the byte array representation of the long
+     */
+    public static byte[] longToBytes(long value) {
+        return ByteBuffer.allocate(Long.BYTES).putLong(value).array();
     }
 }
