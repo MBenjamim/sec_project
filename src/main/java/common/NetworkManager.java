@@ -5,7 +5,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-import main.java.signed_reliable_links.ReliableLink;
+import main.java.authenticated_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,9 +52,31 @@ public class NetworkManager {
     public void initiateBlockchainNetwork(int port, Collection<NodeRegistry> nodes) {
         long messageId = generateMessageId();
         for (NodeRegistry node : nodes) {
-            if (node.getPort() == port)
-                continue;
-            sendMessageThread(new Message(messageId, MessageType.CONNECT, id), node);
+            try {
+                String encryptedKey = keyManager.generateSessionKey(node);
+                sendMessageThread(new Message(messageId, MessageType.CONNECT, id, encryptedKey), node);
+            } catch (Exception e) {
+                logger.error("Error while creating session key for node {}{}", node.getType(), node.getId(), e);
+            }
+        }
+    }
+
+    public void createOneWaySession(Message message, NodeRegistry sender) {
+        try {
+            sender.setSendSessionKey(keyManager.getSessionKey(message));
+        } catch (Exception e) {
+            logger.error("Error while creating one-way session for node {}{}", sender.getType(), sender.getId(), e);
+        }
+    }
+
+    public void createTwoWaySession(Message message, NodeRegistry sender) {
+        try {
+            if (sender.getRecvSessionKey() == null) {
+                sender.setRecvSessionKey(keyManager.getSessionKey(message));
+            }
+            sender.setSendSessionKey(keyManager.getSessionKey(message));
+        } catch (Exception e) {
+            logger.error("Error while creating two-way session for node {}{}", sender.getType(), sender.getId(), e);
         }
     }
 

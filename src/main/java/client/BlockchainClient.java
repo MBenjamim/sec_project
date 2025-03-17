@@ -1,5 +1,6 @@
 package main.java.client;
 
+import lombok.Getter;
 import main.java.common.*;
 
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
  * Represents a client in the blockchain network.
  * Listens from command line and send messages to the blockchain.
  */
+@Getter
 public class BlockchainClient {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainClient.class);
 
@@ -65,7 +67,7 @@ public class BlockchainClient {
      * Starts the client to listen for command line input and connections from blockchain members.
      */
     public void start() {
-        ServerMessageHandler serverMessageHandler = new ServerMessageHandler(networkNodes, networkManager, keyManager, collector);
+        ServerMessageHandler serverMessageHandler = new ServerMessageHandler(this);
         networkManager.startClientCommunications(port, serverMessageHandler, networkNodes.values());
 
         Scanner scanner = new Scanner(System.in);
