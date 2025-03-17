@@ -111,10 +111,11 @@ public class Consensus {
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {
             State signedState = State.fromJson(signedStateJson);
-            if (signedState == null) return null;
 
             try {
-                km.verifyState(signedState, senderNode, index, epochTS);
+                if (signedState == null || !km.verifyState(signedState, senderNode, index, epochTS)) {
+                    return null;
+                }
                 epoch.addToCollector(senderNode.getId(), signedState);
             } catch (Exception e) {
                 logger.error("Failed to verify signature collecting state from {}{}", senderNode.getType(), senderNode.getId(), e);

@@ -125,6 +125,7 @@ public class ConsensusLoop implements Runnable {
             NodeRegistry processNode = server.getNetworkNodes().get(serverId);
             try {
                 if (!server.getKeyManager().verifyState(collectedState, processNode, consensusIndex, epochTS)) {
+                    logger.debug("Invalid signature for process: {} with collected state: {} & signature={}", serverId, collectedState, collectedState.getSignatureBase64());
                     return;
                 }
                 validStates.add(collectedState);

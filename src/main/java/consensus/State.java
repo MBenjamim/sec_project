@@ -6,7 +6,6 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -44,7 +43,7 @@ public class State {
     @JsonIgnore
     public String getPropertiesToSign() {
         try {
-            return objectMapper.writer().withoutAttribute("signature").writeValueAsString(this);
+            return valueTS + "," + objectMapper.writeValueAsString(value) + "," + objectMapper.writeValueAsString(writeSet);
         } catch (JsonProcessingException e) {
             logger.error("Failed to get properties to sign state", e);
             return null;
@@ -81,7 +80,7 @@ public class State {
      * @return the Base64 encoded string representation of the signature
      */
     @JsonProperty("signature")
-    public String getAuthenticationFieldBase64() {
+    public String getSignatureBase64() {
         return Base64.getEncoder().encodeToString(signature);
     }
 
@@ -91,7 +90,7 @@ public class State {
      * @param signatureBase64 the Base64 encoded string representation of the signature
      */
     @JsonProperty("signature")
-    public void setAuthenticationFieldBase64(String signatureBase64) {
+    public void setSignatureBase64(String signatureBase64) {
         this.signature = Base64.getDecoder().decode(signatureBase64);
     }
 }
