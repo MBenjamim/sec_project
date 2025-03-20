@@ -101,8 +101,8 @@ public class ReliableLink {
 
             do {
                 if (relay > timeout) {
-                    logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
-                    return;
+                    //logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
+                    //return;
                 }
 
                 udpSocket.send(packet);
