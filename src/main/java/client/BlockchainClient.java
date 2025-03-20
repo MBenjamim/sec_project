@@ -56,6 +56,9 @@ public class BlockchainClient {
         int port = Integer.parseInt(args[1]);
         String configFile = args[2];
         logger.info("Initing Client with serverId: {} and serverPort: {}", clientId, port);
+
+        ConfigLoader.getProcessId();
+
         BlockchainClient client = new BlockchainClient(clientId, port);
         client.loadConfig(configFile);
         client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);

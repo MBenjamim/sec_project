@@ -87,6 +87,8 @@ public class BlockchainNetworkServer {
             }
         }
 
+        ConfigLoader.getProcessId();
+
         BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort, behavior);
         server.loadConfig(configFile);
         server.consensusLoop = new ConsensusLoop(server, behavior);
