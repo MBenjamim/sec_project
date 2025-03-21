@@ -5,7 +5,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-import main.java.signed_reliable_links.ReliableLink;
+import main.java.authenticated_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,28 +33,57 @@ public class NetworkManager {
         this.timeout = timeout;
     }
 
+    /**
+     * Used for servers to start communications between each other.
+     */
     public void startServerCommunications(int serverPort, int clientPort, MessageHandler handler1, MessageHandler handler2, Collection<NodeRegistry> nodes) {
         startListeningForUDP(serverPort, handler1);
-        initiateBlockchainNetwork(serverPort, nodes);
+        initiateBlockchainNetwork(nodes, false);
         startListeningForUDP(clientPort, handler2);
     }
 
+    /**
+     * Used for clients to start communication with servers.
+     */
     public void startClientCommunications(int port, MessageHandler handler, Collection<NodeRegistry> nodes) {
         startListeningForUDP(port, handler);
-        initiateBlockchainNetwork(port, nodes);
+        initiateBlockchainNetwork(nodes, true);
     }
 
     /**
      * Initiates the blockchain network by sending connect messages to other nodes.
      *
-     * @param port the port number for the server
+     * @param nodes the nodes to initiate a session with
+     * @param twoWay if true indicates the session is two-way, otherwise means it is one-way
      */
-    public void initiateBlockchainNetwork(int port, Collection<NodeRegistry> nodes) {
+    public void initiateBlockchainNetwork(Collection<NodeRegistry> nodes, boolean twoWay) {
         long messageId = generateMessageId();
         for (NodeRegistry node : nodes) {
-            if (node.getPort() == port)
-                continue;
-            sendMessageThread(new Message(messageId, MessageType.CONNECT, id), node);
+            try {
+                String encryptedKey = keyManager.generateSessionKey(node, twoWay);
+                sendMessageThread(new Message(messageId, MessageType.CONNECT, id, encryptedKey), node);
+            } catch (Exception e) {
+                logger.error("Error while creating session key for node {}{}", node.getType(), node.getId(), e);
+            }
+        }
+    }
+
+    public void createOneWaySession(Message message, NodeRegistry sender) {
+        try {
+            sender.setSendSessionKey(keyManager.getSessionKey(message));
+        } catch (Exception e) {
+            logger.error("Error while creating one-way session for node {}{}", sender.getType(), sender.getId(), e);
+        }
+    }
+
+    public void createTwoWaySession(Message message, NodeRegistry sender) {
+        try {
+            if (sender.getRecvSessionKey() == null) {
+                sender.setRecvSessionKey(keyManager.getSessionKey(message));
+            }
+            sender.setSendSessionKey(keyManager.getSessionKey(message));
+        } catch (Exception e) {
+            logger.error("Error while creating two-way session for node {}{}", sender.getType(), sender.getId(), e);
         }
     }
 

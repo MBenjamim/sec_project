@@ -7,6 +7,9 @@ public_keys/
 !server/
 !client/
 
+#Ignore test generated logs
+tests_sh/test*/logs/
+
 # Compiled Java class files
 *.class
 

@@ -2,7 +2,7 @@ package main.java.server;
 
 import main.java.common.*;
 import main.java.consensus.ConsensusLoop;
-import main.java.signed_reliable_links.ReliableLink;
+import main.java.authenticated_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,24 +14,21 @@ import java.util.Map;
 public class ClientMessageHandler implements MessageHandler {
     private static final Logger logger = LoggerFactory.getLogger(ClientMessageHandler.class);
 
-    private final Map<Integer, NodeRegistry> clientNodes;
-    private final NetworkManager networkManager;
-    private final KeyManager keyManager;
-    private final ConsensusLoop consensusLoop;
+    private final Map<Integer, NodeRegistry> clientNodes; // keep track of nodes and their message history
+    private final NetworkManager networkManager;          // to send back messages if needed
+    private final KeyManager keyManager;                  // to verify authenticity and signatures
+    private final ConsensusLoop consensusLoop;            // to request a block to be added to the blockchain
 
     /**
      * Constructor for the ClientMessageHandler class.
      *
-     * @param clientNodes    keep track of nodes and their message history
-     * @param networkManager to send back messages if needed
-     * @param keyManager     to verify signatures
-     * @param consensusLoop  to request a block to be added to the blockchain
+     * @param server needed for this class attributes
      */
-    public ClientMessageHandler(Map<Integer, NodeRegistry> clientNodes, NetworkManager networkManager, KeyManager keyManager, ConsensusLoop consensusLoop) {
-        this.clientNodes = clientNodes;
-        this.networkManager = networkManager;
-        this.keyManager = keyManager;
-        this.consensusLoop = consensusLoop;
+    public ClientMessageHandler(BlockchainNetworkServer server) {
+        this.clientNodes = server.getNetworkClients();
+        this.networkManager = server.getNetworkManager();
+        this.keyManager = server.getKeyManager();
+        this.consensusLoop = server.getConsensusLoop();
     }
 
     @Override
@@ -59,8 +56,11 @@ public class ClientMessageHandler implements MessageHandler {
                 if (firstTime) consensusLoop.addRequest(message);
                 break;
             case CONNECT:
-                sender.addReceivedMessage(message.getId(), message);
-                networkManager.acknowledgeMessage(message, sender);
+                firstTime = sender.addReceivedMessage(message.getId(), message);
+                if (firstTime) networkManager.createTwoWaySession(message, sender);
+                if (sender.getSendSessionKey() != null) { // guarantee that session key is updated
+                    networkManager.acknowledgeMessage(message, sender);
+                }
                 break;
             default:
                 logger.error("Unknown message type: {}", message.getType());

@@ -56,4 +56,17 @@ public class ConfigLoader {
     public int getIntProperty(String key) {
         return Integer.parseInt(config.getProperty(key));
     }
+
+    /**
+     * Get and print the id of the current process.
+     */
+    public static void getProcessId() {
+        try {
+            String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            String processId = processName.split("@")[0];
+            logger.info("This process id is: {}", processId);
+        } catch (Exception e) {
+            logger.error("Failed to retrieve the process id", e);
+        }
+    }
 }

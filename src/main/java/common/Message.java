@@ -32,7 +32,7 @@ public class Message {
 
     @JsonIgnore
     @ToString.Exclude
-    private byte[] signature;
+    private byte[] authenticationField; // hmac or signature
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long consensusIdx = null;
@@ -83,12 +83,12 @@ public class Message {
     }
 
     /**
-     * Retrieves the properties of the message to be signed.
+     * Retrieves the properties of the message to be authenticated.
      *
-     * @return a string representation of the properties to be signed
+     * @return a string representation of the properties to be authenticated
      */
     @JsonIgnore
-    public String getPropertiesToSign() {
+    public String getPropertiesToAuthenticate() {
         String propertiesToSign = id + "," + type + "," + content;
         if (consensusIdx != null && epochTS != null) {
             propertiesToSign += "," + consensusIdx + "," + epochTS;
@@ -143,22 +143,22 @@ public class Message {
     }
 
     /**
-     * Retrieves the signature as a Base64 encoded string.
+     * Retrieves the hmac or signature as a Base64 encoded string.
      *
-     * @return the Base64 encoded string representation of the signature
+     * @return the Base64 encoded string representation of the hmac or signature
      */
-    @JsonProperty("signature")
-    public String getSignatureBase64() {
-        return Base64.getEncoder().encodeToString(signature);
+    @JsonProperty("authenticationField")
+    public String getAuthenticationFieldBase64() {
+        return Base64.getEncoder().encodeToString(authenticationField);
     }
 
     /**
-     * Sets the signature from a Base64 encoded string.
+     * Sets the hmac or signature from a Base64 encoded string.
      *
-     * @param signatureBase64 the Base64 encoded string representation of the signature
+     * @param authenticationFieldBase64 the Base64 encoded string representation of the authentication field
      */
-    @JsonProperty("signature")
-    public void setSignatureBase64(String signatureBase64) {
-        this.signature = Base64.getDecoder().decode(signatureBase64);
+    @JsonProperty("authenticationField")
+    public void setAuthenticationFieldBase64(String authenticationFieldBase64) {
+        this.authenticationField = Base64.getDecoder().decode(authenticationFieldBase64);
     }
 }

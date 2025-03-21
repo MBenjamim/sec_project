@@ -9,7 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.Setter;
-import main.java.common.Message;
+import main.java.common.KeyManager;
+import main.java.common.NodeRegistry;
 import main.java.utils.Behavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ public class Consensus {
     private static final Logger logger = LoggerFactory.getLogger(Consensus.class);
     private final Map<Integer, ConsensusEpoch> epochs =  new HashMap<>();
 
+    private final long index;
     private final State state;
     private final int N; // Total number of processes
     private final int F; // Fault tolerance threshold
@@ -36,7 +38,8 @@ public class Consensus {
      *
      * @param N Total number of processes
      */
-    public Consensus(int N, Behavior behavior) {
+    public Consensus(long index, int N, Behavior behavior) {
+        this.index = index;
         this.N = N;
         this.F = (N - 1) / 3;
         this.currTS = 0;
@@ -91,20 +94,33 @@ public class Consensus {
     /**
      * Used only by LEADER upon receiving STATE message and to send COLLECTED message.
      * Check if this process is the leader that already broadcast read messages,
-     * if so adds this state to the collected ones.
+     * if so verifies the signature and adds this state to the collected ones.
      * Then checks if collector has received enough STATE messages,
      * if so returns the map of collected states.
-     * 
-     * @param epochTS     The timestamp of the epoch to receive the STATE message
-     * @param stateSigned The state of some process including its signature
-     * @param serverId    This process ID to check if is the leader
+     *
+     * @param epochTS         The timestamp of the epoch to receive the STATE message
+     * @param signedStateJson The json string representation of the state and its signature
+     * @param serverId        This process ID to check if is the leader
+     * @param km              This process key manager to verify the signature
+     * @param senderNode      The node that sent the message to verify if state matches the signature
+     * @return Collection of states and signatures if conditions are verified, null otherwise
      */
-    public String collectStateAndGetIfEnough(int epochTS, Message stateSigned, int serverId) {
+    public String collectStateAndGetIfEnough(int epochTS, String signedStateJson, int serverId, KeyManager km, NodeRegistry senderNode) {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() == serverId && epoch.isSentRead()) {
-            epoch.addToCollector(stateSigned.getSender(), stateSigned);
+            State signedState = State.fromJson(signedStateJson);
+
+            try {
+                if (signedState == null || !km.verifyState(signedState, senderNode, index, epochTS)) {
+                    return null;
+                }
+                epoch.addToCollector(senderNode.getId(), signedState);
+            } catch (Exception e) {
+                logger.error("Failed to verify signature collecting state from {}{}", senderNode.getType(), senderNode.getId(), e);
+            }
+
             String toSend = epoch.getCollector().collectValues(serverId);
             if (toSend != null) {
                 epoch.setSentCollected(true);
@@ -122,24 +138,24 @@ public class Consensus {
      * @param epochTS    The timestamp of the epoch to check
      * @param leaderId   The ID of the leader to verify
      * @param jsonString Collected message content i.e. JSON string
-     * @return Message map where values are states from collected message
+     * @return Collection of states from collected message
      */
-    public Map<Integer, Message> getCollectedMessages(int epochTS, int leaderId, String jsonString) {
+    public Map<Integer, State> getCollectedStates(int epochTS, int leaderId, String jsonString) {
         if (epochTS < currTS || !checkLeader(epochTS, leaderId)) return null;
 
-        // Get map of collected messages from json string
-        Map<Integer, Message> collectedMessages;
+        // Get map of collected states from json string
+        Map<Integer, State> collectedStates;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            collectedMessages = objectMapper.readValue(jsonString, new TypeReference<>() {});
+            collectedStates = objectMapper.readValue(jsonString, new TypeReference<>() {});
         } catch (Exception e) {
-            logger.error("Failed to convert JSON to collected messages map", e);
+            logger.error("Failed to convert JSON to collected states map", e);
             return null;
         }
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
-        if (collectedMessages != null && !epoch.getCollector().isCollected() && collectedMessages.size() >= N - F) {
-            return collectedMessages;
+        if (collectedStates != null && !epoch.getCollector().isCollected() && collectedStates.size() >= N - F) {
+            return collectedStates;
         }
         return null;
     }

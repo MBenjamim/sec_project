@@ -1,4 +1,4 @@
-package main.java.signed_reliable_links;
+package main.java.authenticated_reliable_links;
 
 import main.java.common.KeyManager;
 import main.java.common.Message;
@@ -85,7 +85,7 @@ public class ReliableLink {
         int relay = 0;
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());
-            byte[] messageBytes = km.signMessage(message, node);
+            byte[] messageBytes = km.authenticateMessage(message, node);
 
             DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
 
@@ -101,8 +101,8 @@ public class ReliableLink {
 
             do {
                 if (relay > timeout) {
-                    logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
-                    return;
+                    //logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
+                    //return;
                 }
 
                 udpSocket.send(packet);
@@ -120,7 +120,7 @@ public class ReliableLink {
         } catch (IOException e) {
             logger.error("Failed to send message to {}:{}", node.getIp(), node.getPort(), e);
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            logger.error("Failed to sign message", e);
+            logger.error("Failed to authenticate message to {}:{}", node.getIp(), node.getPort(), e);
         }
     }
 }

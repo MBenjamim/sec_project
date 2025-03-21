@@ -46,6 +46,8 @@ TIMEOUT=5
 ```
 
 ## Running the Project
+
+### Automatic Run
 1. **Load Configuration and Compile the Project**\
    Run the `check_config_and_compile.sh` script to check the configuration and compile the project using Maven:
 ```shell
@@ -60,7 +62,7 @@ TIMEOUT=5
 
 3. **Run the Servers**\
     Run the run_servers.sh script to start the servers in separate Tmux windows:\
-    To move between windows use `C-b n (Ctrl + B then N)` learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
+    To move between windows use `C-b n (Ctrl + B then N)` or [enable mouse](#enable-mouse-in-tmux). Learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
 
 ```shell
 ./run_servers.sh
@@ -69,11 +71,42 @@ This script will start the first server in a new Tmux session and additional ser
 
 4. **Run the Clients**\
    Run the run_servers.sh script to start the servers in separate Tmux windows:\
-   To move between windows use `C-b n (Ctrl + B then N)` learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
+   To move between windows use `C-b n (Ctrl + B then N)` or [enable mouse](#enable-mouse-in-tmux). Learn how to use Tmux [here](https://hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/)
 
 ```shell
 ./run_clients.sh
 #write the string to put in the blockchain
+```
+
+### Manual Run
+1. **Load Configuration and Compile the Project**\
+   Run the `check_config_and_compile.sh` script to check the configuration and compile the project using Maven:
+```shell
+./check_config_and_compile.sh
+```
+
+2. **Generate RSA Keys**\
+   Run the `generate_keys.sh` script to generate RSA key pairs for each server and distribute the public keys:
+```shell
+./generate_keys.sh
+```
+
+3. **Run Each Server**\
+   Run each server in a separate window. In each window, run a command like the following, changing the ID for each server (configuration file and log level can also be changed):
+```shell
+mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="0 config.cfg" -DLOG_LEVEL="info"
+```
+
+4. **Run Each Client**\
+    Run each client in a separate window. In each window, run a command like the following, changing the ID for each client (configuration file and log level can also be changed):
+```shell
+mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="0 config.cfg" -DLOG_LEVEL="info"
+```
+
+5. **Run Server with Byzantine Behavior**\
+    Use the following command to start a byzantine server, change `<behavior>` to one of the predefined behavior types:
+```shell
+mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="1 config.cfg <behavior>" -DLOG_LEVEL="info"
 ```
 
 ## Cleanup
@@ -106,4 +139,59 @@ The logs of the previous run are stored in the `logs` directory. The logs are na
 - `server_<server_id>.log`.
 - `client_<client_id>.log`.
 - `server_byzantine_<server_id>.log`.
-   
+
+## Enable Mouse in tmux
+To enable mouse support in `tmux`, follow the steps below. Once enabled, you can interact with the terminal using the mouse for actions like resizing panes, scrolling through output, and switching between windows or panes.
+
+### **Enable Mouse Temporarily**
+To enable the mouse for the current `tmux` session, run the following command:
+
+```bash
+tmux setw -g mouse on
+```
+
+This will enable mouse support for the duration of the session. After you exit the session, mouse support will be disabled, and you'll need to enable it again if you start a new session.
+
+### **Enable Mouse Permanently**
+To enable mouse support automatically every time you start a new `tmux` session, you need to modify the `tmux` configuration file:
+
+1. Open (or create) the `.tmux.conf` file in your home directory:
+
+    ```bash
+    nano ~/.tmux.conf
+    ```
+
+2. Add the following line to the file:
+
+    ```bash
+    set -g mouse on
+    ```
+
+3. Save the file and exit the editor.
+
+To apply the changes immediately, reload the `tmux` configuration file with the following command:
+
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+Now, mouse support will be enabled automatically every time you start a new tmux session.
+
+### What You Can Do with the Mouse
+
+Once mouse support is enabled in `tmux`, you can perform various actions using the mouse. Here are some of the things you can do:
+
+1. **Switch Between Panes**\
+You can click on any pane to focus on it. This makes it easier to interact with different parts of your `tmux` session without needing to use keyboard shortcuts to navigate between panes.
+
+2. **Resize Panes**\
+You can click and drag the borders between panes to resize them. This is especially useful when you want to adjust the layout of your `tmux` session to suit your needs.
+
+3. **Scroll Through Output**\
+You can use the mouse wheel to scroll through the output inside a pane. This allows you to easily review logs, previous commands, or any long outputs without needing to rely on `tmux`'s keyboard shortcuts for scrolling.
+
+4. **Select and Switch Between Windows**\
+You can click on the window list at the bottom of the `tmux` status bar to switch between different windows in the session. This provides a more intuitive way to navigate between different workspaces.
+
+5. **Select and Copy Text**\
+Once mouse support is enabled, you can click and drag to select text in any pane. After selecting text, you can copy it to your clipboard (depending on your terminal settings) for easy pasting elsewhere.

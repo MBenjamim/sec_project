@@ -47,7 +47,7 @@ public class RSAKeyGenerator {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
         keyGen.initialize(KEY_SIZE);
         KeyPair keys = keyGen.generateKeyPair();
-        logger.info("Finish generating " + ALGORITHM + " keys");
+        logger.info("Finish generating " + ALGORITHM + " keys.");
         return keys;
     }
 

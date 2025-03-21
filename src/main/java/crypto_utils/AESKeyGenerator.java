@@ -3,8 +3,7 @@ package main.java.crypto_utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import javax.crypto.*;
 
 /**
@@ -53,7 +52,7 @@ public class AESKeyGenerator {
         KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
         keyGen.init(KEY_SIZE);
         SecretKey key = keyGen.generateKey();
-        logger.info("Finish generating " + ALGORITHM + " keys");
+        logger.info("Finish generating " + ALGORITHM + " key.");
         return key;
     }
 

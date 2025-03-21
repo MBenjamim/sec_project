@@ -9,6 +9,8 @@ import main.java.crypto_utils.RSAKeyReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.SecretKey;
+
 @Getter
 @Setter
 public class NodeRegistry {
@@ -20,6 +22,9 @@ public class NodeRegistry {
     private int id;
     private String type;
     private PublicKey publicKey;
+
+    private SecretKey sendSessionKey; // key used to send messages to this node
+    private SecretKey recvSessionKey; // key used to receive messages from this node
 
     Map<Long, Message> sentMessages = new HashMap<>();
     Map<Long, Message> receivedMessages = new HashMap<>();
@@ -37,6 +42,8 @@ public class NodeRegistry {
         this.ip = ip;
         this.port = port;
         this.publicKey = null;
+        this.sendSessionKey = null;
+        this.recvSessionKey = null;
     }
 
     /**
@@ -53,6 +60,42 @@ public class NodeRegistry {
             logger.error("Failed to read public key", e);
         }
         return publicKey;
+    }
+
+    /**
+     * Retrieves the secret key to send messages to this node.
+     *
+     * @return the secret key to send messages to this node
+     */
+    synchronized public SecretKey getSendSessionKey() {
+        return sendSessionKey;
+    }
+
+    /**
+     * Retrieves the secret key to receive messages from this node.
+     *
+     * @return the secret key to receive messages from this node
+     */
+    synchronized public SecretKey getRecvSessionKey() {
+        return recvSessionKey;
+    }
+
+    /**
+     * Set the secret key for the session.
+     *
+     * @param key the secret key to send messages to this node
+     */
+    synchronized public void setSendSessionKey(SecretKey key) {
+        this.sendSessionKey = key;
+    }
+
+    /**
+     * Set the secret key for the session.
+     *
+     * @param key the secret key to receive messages from this node
+     */
+    synchronized public void setRecvSessionKey(SecretKey key) {
+        this.recvSessionKey = key;
     }
 
     /**

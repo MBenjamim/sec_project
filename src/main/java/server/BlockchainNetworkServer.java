@@ -28,9 +28,9 @@ public class BlockchainNetworkServer {
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
     private final Map<Integer, NodeRegistry> networkClients = new HashMap<>();
 
-    private final int serverPort;
-    private final int clientPort;
     private final int id;
+    private int serverPort;
+    private int clientPort;
     private int timeout;
 
     //tests
@@ -45,14 +45,10 @@ public class BlockchainNetworkServer {
     /**
      * Constructor for the BlockchainNetworkServer class.
      *
-     * @param serverId   the unique identifier for the server
-     * @param serverPort the port number to listen from servers
-     * @param clientPort the port number to listen from clients
+     * @param serverId the unique identifier for the server
      */
-    public BlockchainNetworkServer(int serverId, int serverPort, int clientPort, Behavior behavior) {
+    public BlockchainNetworkServer(int serverId, Behavior behavior) {
         this.id = serverId;
-        this.serverPort = serverPort;
-        this.clientPort = clientPort;
         this.keyManager = new KeyManager(id, "server");
         this.behavior = behavior;
     }
@@ -63,20 +59,17 @@ public class BlockchainNetworkServer {
      * @param args command line arguments (serverId, serverPort and clientPort)
      */
     public static void main(String[] args) {
-        if (args.length > 5 || args.length < 4) {
-            logger.error("Usage: java BlockchainNetworkServer <serverId> <serverPort> <clientPort> <configFile> optional: <behavior>");
+        if (args.length > 3 || args.length < 2) {
+            logger.error("Usage: java BlockchainNetworkServer <serverId> <configFile> optional: <behavior>");
             exit(1);
         }
 
         int serverId = Integer.parseInt(args[0]);
-        int serverPort = Integer.parseInt(args[1]);
-        int clientPort = Integer.parseInt(args[2]);
-        String configFile = args[3];
+        String configFile = args[1];
         Behavior behavior = Behavior.CORRECT; // default behavior
 
-        if (args.length == 5) {
-            logger.debug("Got Here"); //TODO: remove
-            String behaviorStr = args[4];
+        if (args.length == 3) {
+            String behaviorStr = args[2];
             logger.debug("Behavior: {}", behaviorStr);
 
             try {
@@ -87,7 +80,9 @@ public class BlockchainNetworkServer {
             }
         }
 
-        BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, serverPort, clientPort, behavior);
+        ConfigLoader.getProcessId();
+
+        BlockchainNetworkServer server = new BlockchainNetworkServer(serverId, behavior);
         server.loadConfig(configFile);
         server.consensusLoop = new ConsensusLoop(server, behavior);
         server.consensusThread = new Thread(server.consensusLoop);
@@ -99,8 +94,8 @@ public class BlockchainNetworkServer {
      * Starts the server to listen for connections from clients and other blockchain members.
      */
     public void start() {
-        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(networkNodes, networkManager, keyManager, consensusLoop, behavior);
-        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(networkClients, networkManager, keyManager, consensusLoop);
+        NetworkServerMessageHandler networkServerMessageHandler = new NetworkServerMessageHandler(this);
+        ClientMessageHandler clientMessageHandler = new ClientMessageHandler(this);
         networkManager.startServerCommunications(serverPort, clientPort, networkServerMessageHandler, clientMessageHandler, networkNodes.values());
         consensusThread.start();
     }
@@ -117,6 +112,8 @@ public class BlockchainNetworkServer {
         int basePortServers = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER");
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
 
+        this.serverPort = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER") + id;
+        this.clientPort = config.getIntProperty("BASE_PORT_CLIENT_TO_SERVER") + id;
         this.timeout = config.getIntProperty("TIMEOUT");
         ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
 
