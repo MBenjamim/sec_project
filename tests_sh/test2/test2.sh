@@ -65,9 +65,7 @@ trap cleanup EXIT
 #RUN SERVERS
 # Start correct servers
 for ((i=0; i<$((NUM_SERVERS-NUM_BYZANTINE)); i++)); do
-    SERVER_PORT=$((BASE_PORT_SERVER_TO_SERVER + i))
-    CLIENT_PORT=$((BASE_PORT_CLIENT_TO_SERVER + i))
-    mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="$i $SERVER_PORT $CLIENT_PORT $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL &> $LOG_DIR/server_$i.log &
+    mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="$i $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL &> $LOG_DIR/server_$i.log &
     eval SERVER_${i}_PID=$!
     # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
@@ -80,7 +78,7 @@ done
 # Start Byzantine servers
 for ((i=0; i<NUM_BYZANTINE; i++)); do
     SERVER_INDEX=$((NUM_SERVERS-1-i))
-    mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="$SERVER_INDEX $((BASE_PORT_SERVER_TO_SERVER + SERVER_INDEX)) $((BASE_PORT_CLIENT_TO_SERVER + SERVER_INDEX)) $CONFIG_FILE $BEHAVIOR" -DLOG_LEVEL=$LOG_LEVEL &> $LOG_DIR/server_byzantine_$i.log &
+    mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="$SERVER_INDEX $CONFIG_FILE $BEHAVIOR" -DLOG_LEVEL=$LOG_LEVEL &> $LOG_DIR/server_byzantine_$i.log &
     eval SERVER_BYZANTINE_${i}_PID=$!
 done
 
@@ -90,8 +88,7 @@ done
 # Start clients and redirect input from their respective named pipes
 for ((i=0; i<NUM_CLIENTS; i++)); do
     PIPE_PATH="$TMP_DIR/blockchain_client_fifo_$i"
-    PORT=$((BASE_PORT_CLIENTS + i))
-    mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="$i $PORT $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL < "$PIPE_PATH" &> $LOG_DIR/client_$i.log &
+    mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="$i $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL < "$PIPE_PATH" &> $LOG_DIR/client_$i.log &
     eval CLIENT_${i}_PID=$!
     # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
