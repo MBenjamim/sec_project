@@ -32,4 +32,6 @@ done
 
 remove_dir "public_keys"
 
+rm genesis_block.json
+
 echo "Cleanup complete. All server directories and keys have been removed."

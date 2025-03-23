@@ -8,6 +8,13 @@
     <artifactId>blockchain-network</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <repositories>
+        <repository>
+            <id>hyperledger-besu</id>
+            <url>https://hyperledger.jfrog.io/artifactory/besu-maven/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <!-- Jackson Databind -->
         <dependency>
@@ -58,6 +65,39 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.5.17</version>
+        </dependency>
+
+        <!-- Apache Tuweni -->
+        <dependency>
+            <groupId>org.apache.tuweni</groupId>
+            <artifactId>tuweni-bytes</artifactId>
+            <version>2.3.1</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tuweni</groupId>
+            <artifactId>tuweni-units</artifactId>
+            <version>2.3.1</version>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Hyperledger Besu -->
+        <dependency>
+            <groupId>org.hyperledger.besu</groupId>
+            <artifactId>besu-datatypes</artifactId>
+            <version>25.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hyperledger.besu</groupId>
+            <artifactId>evm</artifactId>
+            <version>25.2.1</version>
+        </dependency>
+
+        <!-- Web3j -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+            <version>4.13.0</version>
         </dependency>
 
     </dependencies>

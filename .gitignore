@@ -2,6 +2,7 @@
 server*/
 client*/
 public_keys/
+genesis_block.json
 
 # Allow the specific 'server/' and 'client/' directories
 !server/
