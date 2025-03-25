@@ -1,6 +1,6 @@
 package main.java.blockchain;
 
-import main.java.crypto_utils.DataUtils;
+import main.java.utils.DataUtils;
 
 import java.security.*;
 import java.util.Arrays;

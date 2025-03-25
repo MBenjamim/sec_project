@@ -2,7 +2,7 @@ package main.java.blockchain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
-import main.java.crypto_utils.DataUtils;
+import main.java.utils.DataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

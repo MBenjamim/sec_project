@@ -1,5 +1,6 @@
 package main.java.crypto_utils;
 
+import main.java.utils.DataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
