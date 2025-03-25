@@ -12,6 +12,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.EvmSpecVersion;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.fluent.EVMExecutor;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
@@ -36,6 +37,7 @@ public class GenesisBlockGenerator {
 
     private static final String publicKeysDir = "public_keys/";
     private static final String genesisBlockPath = "genesis_block.json";
+    private static final int DECIMALS = 2;
 
     /**
      * AccessControl.sol bytecode from data->bytecode->object since they will be deployed using EVM
@@ -124,7 +126,15 @@ public class GenesisBlockGenerator {
         logger.info("Stored authorized: {}\tin slot {}", authorizedPartiesEntry, authorizedPartiesKey);
         logger.info("This value should be true -> value: {}", !authorizedPartiesEntry.equals(UInt256.valueOf(0)));
 
-        // for some reason balances are not updated directly by Transfer() event
+        // transfer 1000 tokens to each account
+        for (Address address : eoaList) {
+            transfer(executor, world.getAccount(tokenContractAddr), ownerAddr, address, 1000);
+        }
+
+        // client 1 is blacklisted by default
+        addToBlackList(executor, world.getAccount(accessControlAddr), ownerAddr, eoaList.get(1));
+
+        // FIXME: for some reason balances are not updated directly by Transfer() event
         fixBalancesFromStorage(executor, world, tokenContractAddr, byteArrayOutputStream);
 
         Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
@@ -188,6 +198,29 @@ public class GenesisBlockGenerator {
         return contractAddr;
     }
 
+    public static void transfer(EVMExecutor executor, Account contract, Address from, Address to, int amount) {
+        String functionSignature = getFunctionSignature("transfer(address,uint256)");
+        String paddedReceiver = padHexStringTo256Bit(to.toHexString());
+        String value = convertIntegerToHex256Bit(amount * BigInteger.valueOf(10).pow(DECIMALS).longValue());
+        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
+                .code(contract.getCode())
+                .callData(Bytes.fromHexString(functionSignature + paddedReceiver + value))
+                .sender(from)
+                .receiver(contract.getAddress())
+                .execute();
+    }
+
+    public static void addToBlackList(EVMExecutor executor, Account contract, Address caller, Address address) {
+        String functionSignature = getFunctionSignature("addToBlacklist(address)");
+        String paddedAddress = padHexStringTo256Bit(address.toHexString());
+        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
+                .code(contract.getCode())
+                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
+                .sender(caller)
+                .receiver(contract.getAddress())
+                .execute();
+    }
+
     public static void fixBalancesFromStorage(EVMExecutor executor, SimpleWorld world, Address tokenAddr, ByteArrayOutputStream out) {
         String functionSignature = getFunctionSignature("balanceOf(address)");
         Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
@@ -240,7 +273,7 @@ public class GenesisBlockGenerator {
                 hexString;
     }
 
-    public static String convertIntegerToHex256Bit(int number) {
+    public static String convertIntegerToHex256Bit(long number) {
         BigInteger bigInt = BigInteger.valueOf(number);
 
         return String.format("%064x", bigInt);
