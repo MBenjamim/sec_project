@@ -75,13 +75,27 @@ public class GenesisBlockGenerator {
         // FIXME: for some reason balances are not updated directly by Transfer() event
         executor.fixBalancesFromStorage(world);
 
-        // debug existing accounts and balances
+        //debugState(world, blacklistAddr, tokenAddr);
+
+        Block genesisBlock = new Block(null);
+        genesisBlock.getTransactions().add(new Transaction(137642)); // FIXME
+        genesisBlock.setAddresses(blacklistAddr, tokenAddr);
+        genesisBlock.setWorld(world);
+        genesisBlock.hashBlock();
+
+        debugState(genesisBlock.getWorld(), genesisBlock.getBlacklistAddress(), genesisBlock.getTokenAddress());
+
+        //saveToFile(genesisBlock);
+        //logger.info("Genesis block generated successfully!");
+    }
+
+    public static void debugState(SimpleWorld world, Address blacklistAddr, Address tokenAddr) {
+        logger.info("ACCOUNTS AND BALANCES");
         Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
         for (MutableAccount account : list) {
             logger.info("{}\t{}\t{}", account.getAddress().toString(), world.getAccount(account.getAddress()).getBalance().toLong(), (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA account" : "Contract Account");
         }
 
-        // print storage of each contract - TODO: convert this fields to storage in genesis block
         logger.info("ACCESS CONTROL STORAGE");
         MutableAccount deployedAccessContract = (MutableAccount) world.get(blacklistAddr);
         Map<UInt256, UInt256> storage1 = deployedAccessContract.getUpdatedStorage();
@@ -89,27 +103,12 @@ public class GenesisBlockGenerator {
             logger.info("{}\t{}", entry.getKey(), entry.getValue());
         }
 
-        // print storage of each contract - TODO: convert this fields to storage in genesis block
         logger.info("IST COIN STORAGE");
         MutableAccount deployedTokenContract = (MutableAccount) world.get(tokenAddr);
         Map<UInt256, UInt256> storage2 = deployedTokenContract.getUpdatedStorage();
         for (Map.Entry<UInt256, UInt256> entry : storage2.entrySet()) {
             logger.info("{}\t{}", entry.getKey(), entry.getValue());
         }
-
-        // Deprecated (TODO: create genesis block from world, also create a from json to recover world from blocks)
-//        Block genesisBlock = new Block(null);
-//
-//        // this avoids generating address 0
-//        for (int i = 0; i < numUsers; i++) {
-//            Address address = eoaList.get(i);
-//            genesisBlock.getState().put(address.toString(), new Account(address, 1000L));
-//            logger.info("client{} has the address {}", i, address);
-//        }
-//
-//        genesisBlock.hashBlock();
-//        saveToFile(genesisBlock);
-//        logger.info("Genesis block generated successfully!");
     }
 
     public static List<Address> generateClientAddrs(int numUsers) {
@@ -140,6 +139,9 @@ public class GenesisBlockGenerator {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(jsonString);
         String indentedJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
+
+        Block block = Block.fromJson(indentedJson);
+        debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
 
         try (FileOutputStream fos = new FileOutputStream(genesisBlockPath)) {
             fos.write(indentedJson.getBytes());

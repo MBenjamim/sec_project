@@ -189,7 +189,7 @@ public class SmartContractExecutor {
      * @return the amount understandable by solidity contracts
      */
     public static long getAmount(double amount) {
-        long decimals = BigInteger.valueOf(10).pow(DECIMALS).longValue();
+        long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
         double roundedAmount = Math.floor(amount * decimals) / (double) decimals;
         return (long) (roundedAmount * decimals);
     }
