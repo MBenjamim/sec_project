@@ -75,8 +75,6 @@ public class GenesisBlockGenerator {
         // FIXME: for some reason balances are not updated directly by Transfer() event
         executor.fixBalancesFromStorage(world);
 
-        //debugState(world, blacklistAddr, tokenAddr);
-
         Block genesisBlock = new Block(null);
         genesisBlock.getTransactions().add(new Transaction(137642)); // FIXME
         genesisBlock.setAddresses(blacklistAddr, tokenAddr);
@@ -85,8 +83,8 @@ public class GenesisBlockGenerator {
 
         debugState(genesisBlock.getWorld(), genesisBlock.getBlacklistAddress(), genesisBlock.getTokenAddress());
 
-        //saveToFile(genesisBlock);
-        //logger.info("Genesis block generated successfully!");
+        saveToFile(genesisBlock);
+        logger.info("Genesis block generated successfully!");
     }
 
     public static void debugState(SimpleWorld world, Address blacklistAddr, Address tokenAddr) {
@@ -140,6 +138,7 @@ public class GenesisBlockGenerator {
         JsonNode jsonNode = objectMapper.readTree(jsonString);
         String indentedJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
 
+        // debug: obtain world from genesis block json
         Block block = Block.fromJson(indentedJson);
         debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
 

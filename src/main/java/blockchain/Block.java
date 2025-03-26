@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import main.java.utils.DataUtils;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -119,10 +117,8 @@ public class Block {
     public Map<String, Account> getStateJson() {
         Map<String, Account> state =  new HashMap<>();
         for (MutableAccount account : getAccounts()) {
-            //logger.info("{}\t{}", account.getAddress().toHexString(), new Account(account));
-            state.put(account.getAddress().toHexString(), new Account(account, (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA" : "contract"));
+            state.put(account.getAddress().toHexString(), new Account(account));
         }
-        logger.info("{}\t{}", getAccounts().size(), state.size());
         return state;
     }
 
@@ -132,8 +128,10 @@ public class Block {
             Address address = Address.fromHexString(entry.getKey());
             MutableAccount account = world.createAccount(address);
             account.setBalance(entry.getValue().getBalance());
-            account.setCode(entry.getValue().getCode());
-            account.getUpdatedStorage().putAll(entry.getValue().getStorage());
+            if (entry.getValue().getType().equals(AccountType.CONTRACT)) {
+                account.setCode(entry.getValue().getCode());
+                account.getUpdatedStorage().putAll(entry.getValue().getStorage());
+            }
         }
         this.world.updater().commit();
     }
