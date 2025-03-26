@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import main.java.blockchain.Blockchain;
 import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.common.NodeRegistry;
@@ -19,10 +20,12 @@ import org.slf4j.LoggerFactory;
 public class ConsensusLoop implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ConsensusLoop.class);
 
+    private static final String genesisBlockPath = "genesis_block.json";
+
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
     private final List<Block> requests = new ArrayList<>();
-    private final Map<Long, Block> blockchain = new HashMap<>();
     private final BlockchainNetworkServer server;
+    private final Blockchain blockchain;
 
     //tests
     private final Behavior behavior;
@@ -37,6 +40,7 @@ public class ConsensusLoop implements Runnable {
         this.server = server;
         this.behavior = behavior;
         this.N = server.getNetworkNodes().size();
+        this.blockchain = new Blockchain(server.getNetworkClients(), genesisBlockPath);
     }
 
     @Override
@@ -184,7 +188,7 @@ public class ConsensusLoop implements Runnable {
     }
 
     synchronized public void decide(long consensusIndex, Block block) {
-        if (blockchain.putIfAbsent(consensusIndex, block) != null) return;
+        if (blockchain.getDeprecatedBlocks().putIfAbsent(consensusIndex, block) != null) return; // FIXME
         requests.remove(block); // only removes first match
         inConsensus = false;
         currIndex++;

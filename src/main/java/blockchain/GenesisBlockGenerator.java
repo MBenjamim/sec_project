@@ -76,7 +76,6 @@ public class GenesisBlockGenerator {
         executor.fixBalancesFromStorage(world);
 
         Block genesisBlock = new Block(null);
-        genesisBlock.getTransactions().add(new Transaction(137642)); // FIXME
         genesisBlock.setAddresses(blacklistAddr, tokenAddr);
         genesisBlock.setWorld(world);
         genesisBlock.hashBlock();
@@ -139,12 +138,16 @@ public class GenesisBlockGenerator {
         String indentedJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
 
         // debug: obtain world from genesis block json
-        Block block = Block.fromJson(indentedJson);
-        debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
+        // Block block = Block.fromJson(indentedJson);
+        // debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
 
         try (FileOutputStream fos = new FileOutputStream(genesisBlockPath)) {
             fos.write(indentedJson.getBytes());
             logger.info("Saved genesis block:\n{}", indentedJson);
         }
+
+        // debug: obtain world from genesis block file
+        // Block block = Block.loadFromFile(genesisBlockPath);
+        // debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
     }
 }

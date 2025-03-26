@@ -12,6 +12,9 @@ import org.hyperledger.besu.evm.fluent.SimpleWorld;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -44,14 +47,18 @@ public class Block {
         this.world = new SimpleWorld();
     }
 
-    // FIXME: use more parameters for hash (make it less predictable)
+    /**
+     * Generate (and sets) the hash for the block using transactions and previous block hash as parameters.
+     * Should be performed after setting the transactions to be executed in this block.
+     */
     public void hashBlock() {
         StringBuilder txnData = new StringBuilder();
-
         for (Transaction txn : transactions) {
             txnData.append(txn.toString());
         }
-        byte[] bytes = txnData.toString().getBytes();
+
+        String dataToHash = txnData + (previousBlockHash == null ? "" : previousBlockHash) ;
+        byte[] bytes = dataToHash.getBytes();
 
         try {
             MessageDigest sha256 = MessageDigest.getInstance(ALGORITHM);
@@ -78,6 +85,19 @@ public class Block {
             return objectMapper.readValue(json, Block.class);
         } catch (Exception e) {
             logger.error("Failed to convert JSON to block: {}", json, e);
+            return null;
+        }
+    }
+
+    public static Block loadFromFile(String pathToGenesisBlock) {
+        try (FileInputStream fis = new FileInputStream(pathToGenesisBlock)) {
+            byte[] encoded = new byte[fis.available()];
+            fis.read(encoded);
+
+            String fileContent = new String(encoded, StandardCharsets.UTF_8);
+            return fromJson(fileContent);
+        } catch (IOException e) {
+            logger.error("Failed to read genesis block: ", e);
             return null;
         }
     }
