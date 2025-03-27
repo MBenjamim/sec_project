@@ -5,9 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import main.java.crypto_utils.RSAKeyReader;
 import main.java.utils.DataUtils;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +37,7 @@ public class GenesisBlockGenerator {
         }
 
         int numUsers = Integer.parseInt(args[0]);
-        List<Address> eoaList = generateClientAddrs(numUsers);
+        List<Address> eoaList = generateClientAddresses(numUsers);
         if (eoaList == null) return;
 
         // set the world and EVM
@@ -73,42 +71,23 @@ public class GenesisBlockGenerator {
         executor.addToBlacklist(ownerAddr, eoaList.get(1));
 
         // FIXME: for some reason balances are not updated directly by Transfer() event
-        executor.fixBalancesFromStorage(world);
+        // executor.fixBalancesFromStorage(world);
 
         Block genesisBlock = new Block(null);
         genesisBlock.setAddresses(blacklistAddr, tokenAddr);
         genesisBlock.setWorld(world);
         genesisBlock.hashBlock();
 
-        debugState(genesisBlock.getWorld(), genesisBlock.getBlacklistAddress(), genesisBlock.getTokenAddress());
+        // DEBUG
+        // genesisBlock.debugState();
 
         saveToFile(genesisBlock);
         logger.info("Genesis block generated successfully!");
     }
 
-    public static void debugState(SimpleWorld world, Address blacklistAddr, Address tokenAddr) {
-        logger.info("ACCOUNTS AND BALANCES");
-        Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
-        for (MutableAccount account : list) {
-            logger.info("{}\t{}\t{}", account.getAddress().toString(), world.getAccount(account.getAddress()).getBalance().toLong(), (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA account" : "Contract Account");
-        }
 
-        logger.info("ACCESS CONTROL STORAGE");
-        MutableAccount deployedAccessContract = (MutableAccount) world.get(blacklistAddr);
-        Map<UInt256, UInt256> storage1 = deployedAccessContract.getUpdatedStorage();
-        for (Map.Entry<UInt256, UInt256> entry : storage1.entrySet()) {
-            logger.info("{}\t{}", entry.getKey(), entry.getValue());
-        }
 
-        logger.info("IST COIN STORAGE");
-        MutableAccount deployedTokenContract = (MutableAccount) world.get(tokenAddr);
-        Map<UInt256, UInt256> storage2 = deployedTokenContract.getUpdatedStorage();
-        for (Map.Entry<UInt256, UInt256> entry : storage2.entrySet()) {
-            logger.info("{}\t{}", entry.getKey(), entry.getValue());
-        }
-    }
-
-    public static List<Address> generateClientAddrs(int numUsers) {
+    private static List<Address> generateClientAddresses(int numUsers) {
         List<Address> addresses = new ArrayList<>();
         for (int i = 0; i < numUsers; i++) {
             String publicKeyPath = getPublicKeyPath(i);
@@ -137,17 +116,15 @@ public class GenesisBlockGenerator {
         JsonNode jsonNode = objectMapper.readTree(jsonString);
         String indentedJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
 
-        // debug: obtain world from genesis block json
-        // Block block = Block.fromJson(indentedJson);
-        // debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
+        // DEBUG: obtain world from genesis block json
+        // Block.fromJson(indentedJson).debugState();
 
         try (FileOutputStream fos = new FileOutputStream(genesisBlockPath)) {
             fos.write(indentedJson.getBytes());
             logger.info("Saved genesis block:\n{}", indentedJson);
         }
 
-        // debug: obtain world from genesis block file
-        // Block block = Block.loadFromFile(genesisBlockPath);
-        // debugState(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
+        // DEBUG: obtain world from genesis block file
+        // Block.loadFromFile(genesisBlockPath).debugState();
     }
 }

@@ -17,8 +17,8 @@ import java.util.Map;
 @Setter
 public class ConsensusEpoch {
     private static final Logger logger = LoggerFactory.getLogger(ConsensusEpoch.class);
-    private Map<Integer, Block> written = new HashMap<>();
-    private Map<Integer, Block> accepted = new HashMap<>();
+    private Map<Integer, String> written = new HashMap<>();
+    private Map<Integer, String> accepted = new HashMap<>();
 
     private static int leaderId; // Set from config and is always the same in this project
 
@@ -40,12 +40,12 @@ public class ConsensusEpoch {
         collector.addValue(sender, state);
     }
 
-    public void addWritten(int sender, Block block) {
-        written.put(sender, block);
+    public void addWritten(int sender, String value) {
+        written.put(sender, value);
     }
 
-    public void addAccepted(int sender, Block block) {
-        accepted.put(sender, block);
+    public void addAccepted(int sender, String value) {
+        accepted.put(sender, value);
     }
 
     // Lombok does not directly support generating static getter and setter methods for static fields
@@ -58,27 +58,27 @@ public class ConsensusEpoch {
         ConsensusEpoch.leaderId = leaderId;
     }
 
-    public boolean enoughWritten(Block block) {
-        if (enoughForMap(written, block)) {
+    public boolean enoughWritten(String value) {
+        if (enoughForMap(written, value)) {
             written = new HashMap<>();
             return true;
         }
         return false;
     }
 
-    public boolean enoughAccepted(Block block) {
-        if (enoughForMap(accepted, block)) {
+    public boolean enoughAccepted(String value) {
+        if (enoughForMap(accepted, value)) {
             accepted = new HashMap<>();
             return true;
         }
         return false;
     }
 
-    private boolean enoughForMap(Map<?, Block> map, Block block) {
+    private boolean enoughForMap(Map<?, String> map, String value) {
         int requiredCount = 2 * F + 1;
         if (map.size() < requiredCount) return false;
         return map.values().stream()
-                .filter(value -> value.equals(block))
+                .filter(v -> v.equals(value))
                 .count() == requiredCount;
     }
 }

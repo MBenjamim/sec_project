@@ -1,7 +1,9 @@
 package main.java.blockchain;
 
+import lombok.Getter;
 import main.java.utils.DataUtils;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.EvmSpecVersion;
@@ -17,7 +19,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
+@Getter
 public class SmartContractExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SmartContractExecutor.class);
 
@@ -28,6 +33,8 @@ public class SmartContractExecutor {
     private Address tokenAddress = null;
     private Address blacklistAddress = null;
     private final ByteArrayOutputStream outputStream;
+    private final Map<String, TransactionType> signatureToType = new HashMap<>();
+    private final Map<TransactionType, String> typeToSignature = new HashMap<>();
 
     public SmartContractExecutor(SimpleWorld world) {
         this.outputStream = new ByteArrayOutputStream();
@@ -37,6 +44,38 @@ public class SmartContractExecutor {
                 .tracer(tracer)
                 .worldUpdater(world.updater())
                 .commitWorldState();
+
+        // AccessControl.sol functions (commented are not implemented)
+        addFunctionSignature("addToBlacklist(address)", TransactionType.ADD_TO_BLACKLIST);
+        //addFunctionSignature("authorizedParties(address)", TransactionType.AUTHORIZED_PARTIES);
+        addFunctionSignature("isBlacklisted(address)", TransactionType.IS_BLACKLISTED);
+        //addFunctionSignature("owner()", TransactionType.OWNER);
+        addFunctionSignature("removeFromBlacklist(address)", TransactionType.REMOVE_FROM_BLACKLIST);
+        //addFunctionSignature("setAuthorizedParty(address,bool)", TransactionType.SET_AUTHORIZED_PARTIES);
+
+        // ISTCoin.sol functions (commented are not implemented)
+        //addFunctionSignature("accessControl()", TransactionType.ACCESS_CONTROL);
+        //addFunctionSignature("allowance(address,address)", TransactionType.ALLOWANCE);
+        //addFunctionSignature("approve(address,uint256)", TransactionType.APPROVE);    TODO
+        addFunctionSignature("balanceOf(address)", TransactionType.BALANCE_OF);
+        //addFunctionSignature("decimals()", TransactionType.DECIMALS);
+        //addFunctionSignature("name()", TransactionType.NAME);
+        //addFunctionSignature("symbol()", TransactionType.SYMBOL);
+        //addFunctionSignature("totalSupply()", TransactionType.TOTAL_SUPPLY);          TODO
+        addFunctionSignature("transfer(address,uint256)", TransactionType.TRANSFER);
+        //addFunctionSignature("transferFrom(address,address,uint256)", TransactionType.TRANSFER_FROM); TODO
+    }
+
+    public SmartContractExecutor(SimpleWorld world, Address blacklist, Address token) {
+        this(world);
+        setTokenContract(world.getAccount(blacklist));
+        setTokenContract(world.getAccount(token));
+    }
+
+    private void addFunctionSignature(String function, TransactionType type) {
+        String functionSignature = DataUtils.getFunctionSignature(function);
+        signatureToType.put(functionSignature, type);
+        typeToSignature.put(type, functionSignature);
     }
 
     /**
@@ -72,6 +111,7 @@ public class SmartContractExecutor {
         executor.messageFrameType(MessageFrame.Type.CONTRACT_CREATION)
                 .contract(contractAddr)
                 .code(bytecode)
+                .callData(Bytes.EMPTY)
                 .sender(ownerAddr)
                 .receiver(contractAddr)
                 .execute();
@@ -79,20 +119,10 @@ public class SmartContractExecutor {
     }
 
     /**
-     * Methods from AccessControl.sol are implemented below:
-     *  - addToBlacklist(address)          implemented
-     *  - authorizedParties(address)       TODO
-     *  - isBlacklisted(address)           implemented
-     *  - owner()                          TODO
-     *  - removeFromBlacklist(address)     implemented
-     *  - setAuthorizedParty(address,bool) TODO
-     */
-
-    /**
      * Executes addToBlacklist(address) method from AccessControl smart contract.
      */
     public boolean addToBlacklist(Address caller, Address address) {
-        String functionSignature = DataUtils.getFunctionSignature("addToBlacklist(address)");
+        String functionSignature = typeToSignature.get(TransactionType.ADD_TO_BLACKLIST);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
         executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
                 .code(blacklistBytecode)
@@ -107,7 +137,7 @@ public class SmartContractExecutor {
      * Executes isBlacklisted(address) method from AccessControl smart contract.
      */
     public boolean isBlacklisted(Address caller, Address address) {
-        String functionSignature = DataUtils.getFunctionSignature("isBlacklisted(address)");
+        String functionSignature = typeToSignature.get(TransactionType.IS_BLACKLISTED);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
         executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
                 .code(blacklistBytecode)
@@ -122,7 +152,7 @@ public class SmartContractExecutor {
      * Executes removeFromBlacklist(address) method from AccessControl smart contract.
      */
     public boolean removeFromBlacklist(Address caller, Address address) {
-        String functionSignature = DataUtils.getFunctionSignature("removeFromBlacklist(address)");
+        String functionSignature = typeToSignature.get(TransactionType.REMOVE_FROM_BLACKLIST);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
         executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
                 .code(blacklistBytecode)
@@ -134,24 +164,10 @@ public class SmartContractExecutor {
     }
 
     /**
-     * Methods from ISTCoin.sol are implemented below:
-     *  - accessControl()                       TODO
-     *  - allowance(address,address)            TODO
-     *  - approve(address,uint256)              TODO
-     *  - balanceOf(address)                    TODO
-     *  - decimals()                            TODO
-     *  - name()                                TODO
-     *  - symbol()                              TODO
-     *  - totalSupply()                         TODO
-     *  - transfer(address,uint256)             implemented
-     *  - transferFrom(address,address,uint256) TODO
-     */
-
-    /**
      * Executes transfer(address,uint256) method from ISTCoin smart contract.
      */
     public void transfer(Address from, Address to, double amount) {
-        String functionSignature = DataUtils.getFunctionSignature("transfer(address,uint256)");
+        String functionSignature = typeToSignature.get(TransactionType.TRANSFER);
         String paddedReceiver = DataUtils.padHexString(to.toHexString());
         String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
         executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
@@ -163,24 +179,40 @@ public class SmartContractExecutor {
     }
 
     /**
-     * FIXME - for some reason balances are not updated directly by Transfer() event
+     * Executes "balanceOf(address)" method from ISTCoin smart contract.
      */
-    public void fixBalancesFromStorage(SimpleWorld world) {
-        String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
-        Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
-        for (MutableAccount account : list) {
-            String paddedAddr = DataUtils.padHexString(account.getAddress().toHexString());
-            executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                    .code(tokenBytecode)
-                    .callData(Bytes.fromHexString(functionSignature + paddedAddr))
-                    .sender(tokenAddress)
-                    .receiver(tokenAddress)
-                    .execute();
-            // update balance manually
-            account.setBalance(Wei.fromHexString(Long.toHexString(DataUtils.extractLongFromReturnData(outputStream))));
-            executor.worldUpdater(world.updater()).commitWorldState();
-        }
+    public Long balanceOf(Address caller, Address address) {
+        String functionSignature = typeToSignature.get(TransactionType.BALANCE_OF);
+        String paddedAddress = DataUtils.padHexString(address.toHexString());
+        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
+                .code(tokenBytecode)
+                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
+                .sender(caller)
+                .receiver(tokenAddress)
+                .execute();
+        return DataUtils.extractLongFromReturnData(outputStream);
     }
+
+//  DEPRECATED
+//    /**
+//     * FIXME - for some reason balances are not updated directly by Transfer() event
+//     */
+//    public void fixBalancesFromStorage(SimpleWorld world) {
+//        String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
+//        Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
+//        for (MutableAccount account : list) {
+//            String paddedAddr = DataUtils.padHexString(account.getAddress().toHexString());
+//            executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
+//                    .code(tokenBytecode)
+//                    .callData(Bytes.fromHexString(functionSignature + paddedAddr))
+//                    .sender(tokenAddress)
+//                    .receiver(tokenAddress)
+//                    .execute();
+//            // update balance manually
+//            account.setBalance(Wei.fromHexString(Long.toHexString(DataUtils.extractLongFromReturnData(outputStream))));
+//            executor.worldUpdater(world.updater()).commitWorldState();
+//        }
+//    }
 
     /**
      * Utility function to convert double to uint256.

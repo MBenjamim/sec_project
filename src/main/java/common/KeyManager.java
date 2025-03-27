@@ -102,13 +102,13 @@ public class KeyManager {
      * @throws SignatureException       if an error occurs during signing
      * @throws InvalidKeyException      if the key is invalid
      */
-    public byte[] signState(State state, int processId, long consensusIdx, int epochTS) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+    public String signState(State state, int processId, long consensusIdx, int epochTS) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         byte[] stateBytes = state.getPropertiesToSign().getBytes();
 
         byte[] signature = RSAAuthenticator.signState(privateKey, processId, consensusIdx, epochTS, stateBytes);
 
         state.setSignature(signature);
-        return state.toJson().getBytes();
+        return state.toJson();
     }
 
     /**

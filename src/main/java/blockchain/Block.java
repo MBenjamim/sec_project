@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import main.java.utils.DataUtils;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
@@ -154,5 +156,38 @@ public class Block {
             }
         }
         this.world.updater().commit();
+    }
+
+    /**
+     * Utility to understand the state of the block.
+     * Prints accounts, balances, storage of contracts...
+     */
+    public void debugState() {
+        logger.info("DEBUGGING BLOCKCHAIN STATE");
+        logger.info("ACCOUNTS -\taddress\t\t| balance (DepCoin) | account type | balance (ISTCoin)");
+        Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
+        for (MutableAccount account : list) {
+            logger.info(
+                    "{}\t{}\t{}\t{}",
+                    account.getAddress().toHexString(),
+                    account.getBalance().toLong(),
+                    (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA account" : "Contract acc.",
+                    new SmartContractExecutor(world, blacklistAddress, tokenAddress).balanceOf(account.getAddress(), account.getAddress())
+            );
+        }
+
+        logger.info("ACCESS CONTROL STORAGE - entry -> value");
+        MutableAccount deployedAccessContract = (MutableAccount) world.get(blacklistAddress);
+        Map<UInt256, UInt256> storage1 = deployedAccessContract.getUpdatedStorage();
+        for (Map.Entry<UInt256, UInt256> entry : storage1.entrySet()) {
+            logger.info("{}->{}", entry.getKey(), entry.getValue());
+        }
+
+        logger.info("IST COIN STORAGE - entry -> value");
+        MutableAccount deployedTokenContract = (MutableAccount) world.get(tokenAddress);
+        Map<UInt256, UInt256> storage2 = deployedTokenContract.getUpdatedStorage();
+        for (Map.Entry<UInt256, UInt256> entry : storage2.entrySet()) {
+            logger.info("{}->{}", entry.getKey(), entry.getValue());
+        }
     }
 }

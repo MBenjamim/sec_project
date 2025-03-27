@@ -21,19 +21,13 @@ import org.slf4j.LoggerFactory;
 public class State {
     private static final Logger logger = LoggerFactory.getLogger(State.class);
 
-    private final Map<Integer, Block> writeSet = new HashMap<>();
-    private Block value;
+    private final Map<Integer, String> writeSet = new HashMap<>();
+    private String value;
     private int valueTS = -1;
 
     @JsonIgnore
     @ToString.Exclude
     private byte[] signature;
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    public boolean checkValid(int nrClients) {
-        return value != null && value.checkValid(nrClients);
-    }
 
     /**
      * Retrieves the properties of the state to be signed.
@@ -43,7 +37,8 @@ public class State {
     @JsonIgnore
     public String getPropertiesToSign() {
         try {
-            return valueTS + "," + objectMapper.writeValueAsString(value) + "," + objectMapper.writeValueAsString(writeSet);
+            ObjectMapper objectMapper = new ObjectMapper();
+            return valueTS + "," + value + "," + objectMapper.writeValueAsString(writeSet);
         } catch (JsonProcessingException e) {
             logger.error("Failed to get properties to sign state", e);
             return null;
@@ -55,6 +50,7 @@ public class State {
      */
     public String toJson() {
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
             logger.error("Failed to convert state to JSON", e);
@@ -67,6 +63,7 @@ public class State {
      */
     public static State fromJson(String json) {
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(json, State.class);
         } catch (JsonProcessingException e) {
             logger.error("Failed to convert JSON to state", e);

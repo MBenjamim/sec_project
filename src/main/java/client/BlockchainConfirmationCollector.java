@@ -58,7 +58,7 @@ public class BlockchainConfirmationCollector {
      * @return null to keep waiting, timestamp of decision otherwise
      */
     private Long condition(String input) {
-        int requiredCount = 2 * F + 1;
+        int requiredCount = F + 1;
         if (collectedValues.size() < requiredCount) return null;
         int count = 0;
         for (int i = 0; i < N; i++) {

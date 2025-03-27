@@ -12,7 +12,6 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,8 +21,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class Account {
     private static final Logger logger = LoggerFactory.getLogger(Account.class);
-
-    private static final int DECIMALS = 2;
 
     @JsonIgnore
     private AccountType type;
@@ -50,14 +47,13 @@ public class Account {
     }
 
     @JsonProperty("balance")
-    public String getBalanceJson() {
-        return BigDecimal.valueOf(balance.toLong()).movePointLeft(DECIMALS).toPlainString();
+    public Long getBalanceJson() {
+        return balance.toLong();
     }
 
     @JsonProperty("balance")
-    public void setBalanceJson(String balanceString) {
-        BigDecimal balance = new BigDecimal(balanceString);
-        this.balance = Wei.of(balance.movePointRight(DECIMALS).longValue());
+    public void setBalanceJson(Long balance) {
+        this.balance = Wei.of(balance);
     }
 
     @JsonProperty("code")

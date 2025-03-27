@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.Setter;
+import main.java.blockchain.Blockchain;
+import main.java.blockchain.Transaction;
 import main.java.common.KeyManager;
 import main.java.common.NodeRegistry;
 import main.java.utils.Behavior;
@@ -49,15 +51,17 @@ public class Consensus {
     
     /**
      * Used before send READs phase.
-     * This method sets the value for the decision if no value has been assigned yet 
+     * This method sets the list of transaction to be decided if no order has been assigned yet
      * and returns the timestamp of the current epoch.
      * 
-     * @param value The block containing the value requested by a client and its client ID
-     * @return The timestamp of the current epoch
+     * @param transactions The list of transactions to be ordered
+     * @return The timestamp of the current epoch, null if json conversion fails
      */
-    public int proposeToEpoch(Block value) {
+    public Integer proposeToEpoch(List<Transaction> transactions) {
         if (state.getValueTS() < 0) {
-            state.setValue(value);
+            String transactionsJson = transactionsToJson(transactions);
+            if (transactionsJson == null) return null;
+            state.setValue(transactionsJson);
         }
         ConsensusEpoch epoch = getConsensusCurrentEpoch();
         epoch.setSentRead(true);
@@ -121,11 +125,11 @@ public class Consensus {
                 logger.error("Failed to verify signature collecting state from {}{}", senderNode.getType(), senderNode.getId(), e);
             }
 
-            String toSend = epoch.getCollector().collectValues(serverId);
-            if (toSend != null) {
+            String collectedStates = epoch.getCollector().collectValues(serverId);
+            if (collectedStates != null) {
                 epoch.setSentCollected(true);
             }
-            return toSend;
+            return collectedStates;
         }
         return null;
     }
@@ -144,17 +148,11 @@ public class Consensus {
         if (epochTS < currTS || !checkLeader(epochTS, leaderId)) return null;
 
         // Get map of collected states from json string
-        Map<Integer, State> collectedStates;
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            collectedStates = objectMapper.readValue(jsonString, new TypeReference<>() {});
-        } catch (Exception e) {
-            logger.error("Failed to convert JSON to collected states map", e);
-            return null;
-        }
+        Map<Integer, State> collectedStates = collectionOfStatesFromJson(jsonString);
+        if (collectedStates == null) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
-        if (collectedStates != null && !epoch.getCollector().isCollected() && collectedStates.size() >= N - F) {
+        if (!epoch.getCollector().isCollected() && collectedStates.size() >= N - F) {
             return collectedStates;
         }
         return null;
@@ -167,38 +165,58 @@ public class Consensus {
      * @param epochTS         The timestamp of the epoch to receive the COLLECTED message
      * @param collectedStates The collection of states
      * @param leaderState     The state of the leader for unbound decisions
-     * @param nrClients       Number of clients to check is value is valid
+     * @param km              The key manager to verify transaction signatures
+     * @param blockchain      To verify transaction signatures and check replay attacks
      * @return Block containing the decided value and ID of the client that proposed the value,
      * or null if no value can be decided
      */
-    public Block determineValueToWrite(int epochTS, List<State> collectedStates, State leaderState, int nrClients) {
+    public String determineValueToWrite(int epochTS, List<State> collectedStates, State leaderState, KeyManager km, Blockchain blockchain) {
         // if (epochTS < currTS) return null; // verified before using checkLeader()
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         epoch.getCollector().markAsCollected();
 
         // Check all states for a value stopping when a deterministic value is found (skip invalid values)
         for (State state : collectedStates) {
-            if (state == null || !state.checkValid(nrClients)) continue;
+            if (state == null || !checkValidTransactions(state.getValue(), km, blockchain)) continue;
 
-            Block block = determineValueFromState(state, collectedStates, leaderState);
+            String transactions = determineValueFromState(state, collectedStates, leaderState);
 
-            if (block != null) {
-                //tests
-                if (this.behavior == Behavior.WRONG_WRITE) {
-                    logger.info("\nI am byzantine and I will write a wrong block\n");
-                    String originalValue = block.getValue();
-                    String newValue = originalValue + "WRONG";
-                    block.setValue(newValue);
-                }
-                updateStateAndEpochTS(epochTS, block, false);
-                return block;
+            if (transactions != null) {
+                // FIXME - byzantine behavior
+//                if (this.behavior == Behavior.WRONG_WRITE) {
+//                    logger.info("\nI am byzantine and I will write a wrong block\n");
+//                    String originalValue = block.getValue();
+//                    String newValue = originalValue + "WRONG";
+//                    block.setValue(newValue);
+//                }
+                updateStateAndEpochTS(epochTS, transactions, false);
+                return transactions;
             }
         }
         return null;
     }
 
     /**
-     * Given a state from collection of states determine if some value can be decided:
+     * Verify if transactions are correctly signed, are not repeated and are correctly formed.
+     *
+     * @param transactionsJson json representation of the list of transactions
+     * @param km               the key manager to verify signatures
+     * @param blockchain       to verify transaction signatures and check replay attacks
+     * @return true if transaction is valid, false otherwise
+     */
+    private boolean checkValidTransactions(String transactionsJson, KeyManager km, Blockchain blockchain) {
+        List<Transaction> transactions = transactionsFromJson(transactionsJson);
+        if (transactions == null) return false;
+
+        for (Transaction transaction : transactions) {
+            if (transaction == null) return false;
+            if (!transaction.isValid(blockchain, km)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Given a state from collection of states determine if some value (order of transactions) can be decided:
      *      - Starts by verifying if the value was written in some epoch (verify timestamp),
      *      and check if this pair (valTS, val) is in a minimum number of write sets.
      *      If both conditions are verified the value is bound and can be decided.
@@ -210,13 +228,12 @@ public class Consensus {
      * @param state           The state from collection to check
      * @param collectedStates The collection of states
      * @param leaderState     The state of the leader for unbound decisions
-     * @return Block containing the decided value and ID of the client that proposed the value,
-     * or null if no value can be decided
+     * @return String containing the decided order of transactions, or null if no value can be decided
      */
-    public Block determineValueFromState(State state, List<State> collectedStates, State leaderState) {
-        Block value = state.getValue();
+    private String determineValueFromState(State state, List<State> collectedStates, State leaderState) {
+        String value = state.getValue();
         int valueTS = state.getValueTS();
-        Block tmpval = null;
+        String tmpval = null;
 
         int count = 0;
         if (state.getValueTS() >= 0) {
@@ -241,30 +258,16 @@ public class Consensus {
 
     /**
      * Used upon receiving WRITE message and to send ACCEPT message.
-     * @param epochTS
-     * @param senderId
-     * @param json
-     * @param serverId
-     * @return
      */
-    public Block collectWriteAndGetIfEnough(int epochTS, int senderId, String json, int serverId) {
+    public String collectWriteAndGetIfEnough(int epochTS, int senderId, String transactions, int serverId) {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
-            Block value;
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                value = objectMapper.readValue(json, Block.class);
-            } catch (Exception e) {
-                logger.error("Failed to convert JSON to block", e);
-                return null;
-            }
-
-            epoch.addWritten(senderId, value);
-            if (epoch.enoughWritten(value)) {
-                updateStateAndEpochTS(epochTS, value, true);
-                return value;
+            epoch.addWritten(senderId, transactions);
+            if (epoch.enoughWritten(transactions)) {
+                updateStateAndEpochTS(epochTS, transactions, true);
+                return transactions;
             }
         }
         return null;
@@ -272,44 +275,30 @@ public class Consensus {
 
     /**
      * Used upon receiving ACCEPT message and to decide (finish consensus instance).
-     * @param epochTS
-     * @param senderId
-     * @param json
-     * @param serverId
-     * @return
      */
-    public Block collectAcceptAndGetIfEnough(int epochTS, int senderId, String json, int serverId) {
+    public List<Transaction> collectAcceptAndGetIfEnough(int epochTS, int senderId, String transactions, int serverId) {
         if (epochTS < currTS) return null;
 
         ConsensusEpoch epoch = getConsensusEpoch(epochTS);
         if (epoch.getLeaderId() != serverId || (epoch.isSentRead() && epoch.isSentCollected())) {
-            Block value;
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                value = objectMapper.readValue(json, Block.class);
-            } catch (Exception e) {
-                logger.error("Failed to convert JSON to block", e);
-                return null;
-            }
-
-            epoch.addAccepted(senderId, value);
-            if (epoch.enoughAccepted(value)) {
-                updateStateAndEpochTS(epochTS, value, true);
-                return value;
+            epoch.addAccepted(senderId, transactions);
+            if (epoch.enoughAccepted(transactions)) {
+                updateStateAndEpochTS(epochTS, transactions, true);
+                return transactionsFromJson(transactions);
             }
         }
         return null;
     }
 
-    private void updateStateAndEpochTS(int epochTS, Block value, boolean toUpdatePair) {
+    private void updateStateAndEpochTS(int epochTS, String value, boolean toUpdatePair) {
         currTS = epochTS;
         if (toUpdatePair) {
             state.setValueTS(currTS);
             state.setValue(value);
         }
         // update write set
-        Map<Integer, Block> writeSet = this.state.getWriteSet();
-        Block valueInWriteSet = writeSet.get(currTS);
+        Map<Integer, String> writeSet = this.state.getWriteSet();
+        String valueInWriteSet = writeSet.get(currTS);
         if (valueInWriteSet != null && valueInWriteSet.equals(value)) {
             writeSet.remove(currTS);
         }
@@ -327,5 +316,35 @@ public class Consensus {
             return epoch;
         }
         return epochs.get(index);
-    } 
+    }
+
+    public static Map<Integer, State> collectionOfStatesFromJson(String json) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(json, new TypeReference<>() {});
+        } catch (Exception e) {
+            logger.error("Failed to convert JSON to collected states map", e);
+            return null;
+        }
+    }
+
+    public static String transactionsToJson(List<Transaction> transactions) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writeValueAsString(transactions);
+        } catch (Exception e) {
+            logger.error("Failed to convert list of transactions to JSON", e);
+            return null;
+        }
+    }
+
+    public static List<Transaction> transactionsFromJson(String json) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(json, new TypeReference<>() {});
+        } catch (Exception e) {
+            logger.error("Failed to convert JSON to list of transactions", e);
+            return null;
+        }
+    }
 }
