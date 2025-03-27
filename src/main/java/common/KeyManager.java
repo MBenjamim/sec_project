@@ -6,6 +6,7 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.util.Base64;
 
+import main.java.blockchain.Transaction;
 import main.java.consensus.State;
 import main.java.crypto_utils.*;
 import org.slf4j.Logger;
@@ -129,6 +130,42 @@ public class KeyManager {
 
         return RSAAuthenticator.verifyState(process.getPublicKey(), processId, consensusIdx, epochTS, stateBytes, signature);
     }
+
+
+    /**
+     * Signs a transaction using the private key.
+     *
+     * @param transaction        the transaction to sign
+     * @return the signed transaction as a byte array
+     * @throws NoSuchAlgorithmException if the algorithm is not available
+     * @throws SignatureException       if an error occurs during signing
+     * @throws InvalidKeyException      if the key is invalid
+     */
+    public byte[] signTransaction(Transaction transaction) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        byte[] transactionBytes = transaction.getPropertiesToSign();
+
+        byte[] signature = RSAAuthenticator.signTransaction(privateKey, transactionBytes);
+
+        transaction.setSignature(signature);
+        return transaction.toJson().getBytes();
+    }
+
+    /**
+     * Verifies the signature of a transaction.
+     *
+     * @param transaction        the transaction to verify
+     * @return true if the transaction is valid, false otherwise
+     * @throws NoSuchAlgorithmException if the algorithm is not available
+     * @throws SignatureException       if an error occurs during verification
+     * @throws InvalidKeyException      if the key is invalid
+     */
+    public boolean verifyTransaction(Transaction transaction, NodeRegistry process) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        byte[] transactionBytes = transaction.getPropertiesToSign();
+        byte[] signature = transaction.getSignature();
+
+        return RSAAuthenticator.verifyTransaction(process.getPublicKey(), transactionBytes, signature);
+    }
+
 
     /**
      * Generates a session key and encrypts it using the receiver's public key.

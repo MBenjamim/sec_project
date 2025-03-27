@@ -54,7 +54,7 @@ public class Block {
     public void hashBlock() {
         StringBuilder txnData = new StringBuilder();
         for (Transaction txn : transactions) {
-            txnData.append(txn.toString());
+            txnData.append(txn.toJson());
         }
 
         String dataToHash = txnData + (previousBlockHash == null ? "" : previousBlockHash) ;

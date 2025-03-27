@@ -153,7 +153,7 @@ public class SmartContractExecutor {
     public void transfer(Address from, Address to, double amount) {
         String functionSignature = DataUtils.getFunctionSignature("transfer(address,uint256)");
         String paddedReceiver = DataUtils.padHexString(to.toHexString());
-        String value = DataUtils.convertNumberToHex256Bit(getAmount(amount));
+        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
         executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
                 .code(tokenBytecode)
                 .callData(Bytes.fromHexString(functionSignature + paddedReceiver + value))
@@ -183,12 +183,12 @@ public class SmartContractExecutor {
     }
 
     /**
-     * Gets the amount including decimals.
+     * Utility function to convert double to uint256.
      *
      * @param amount the real amount of the token
      * @return the amount understandable by solidity contracts
      */
-    public static long getAmount(double amount) {
+    private static long convertAmount(double amount) {
         long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
         double roundedAmount = Math.floor(amount * decimals) / (double) decimals;
         return (long) (roundedAmount * decimals);

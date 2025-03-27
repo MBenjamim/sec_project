@@ -1,6 +1,7 @@
 package main.java.client;
 
 import lombok.Getter;
+import main.java.blockchain.Transaction;
 import main.java.common.*;
 
 import java.util.HashMap;
@@ -8,6 +9,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+import main.java.utils.DataUtils;
+import org.apache.commons.cli.*;
+import org.hyperledger.besu.datatypes.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +24,7 @@ public class BlockchainClient {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainClient.class);
 
     private final Map<Integer, NodeRegistry> networkNodes = new HashMap<>();
+    private final Map<Integer, NodeRegistry> networkClients = new HashMap<>();
 
     private final int id;
     private int port;
@@ -67,15 +72,19 @@ public class BlockchainClient {
      */
     public void start() {
         ServerMessageHandler serverMessageHandler = new ServerMessageHandler(this);
+        logger.info("Connecting to the network...");
         networkManager.startClientCommunications(port, serverMessageHandler, networkNodes.values());
 
         Scanner scanner = new Scanner(System.in);
 
+        printWelcomeMessage();
+
         while (true) {
             try {
+                System.out.print("> ");
                 String input = scanner.nextLine().trim();
                 if (input.equalsIgnoreCase("exit")) {
-                    logger.info("Exiting...");
+                    logger.debug("Exiting...");
                     System.exit(0);
                     break;
                 }
@@ -93,11 +102,82 @@ public class BlockchainClient {
         if (input == null || input.isBlank()) return;
         logger.debug("Received input: {}", input);
 
-        // Create and send a message to each node with different IDs
-        long messageId = networkManager.generateMessageId();
-        networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(messageId, MessageType.CLIENT_WRITE, id, input), node));
-        long timestamp = collector.waitForConfirmation(input);
-        logger.info("Value '{}' appended to the blockchain with timestamp {}", input, timestamp);
+        if (input.startsWith("send")) {
+            try {
+                Transaction transaction = parseSendCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                long timestamp = collector.waitForConfirmation(messageContent);
+                logger.info("Value '{}' appended to the blockchain with timestamp {}", messageContent, timestamp);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        } else {
+            System.out.println("Error: Unknown command '" + input + "'.");
+        }
+    }
+
+    private Transaction parseSendCommand(String input) throws ParseException {
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("amount", true, "Amount to send");
+        options.addOption("toid", true, "Receiver client ID");
+        options.addOption("to", true, "Receiver address");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("amount") || (!cmd.hasOption("toid") && !cmd.hasOption("to"))) {
+            throw new IllegalArgumentException("Invalid command format. Expected: send -amount <value> -toid <clientID> or -to <address>");
+        }
+
+        double amount;
+        try {
+            amount = Double.parseDouble(cmd.getOptionValue("amount"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Amount must be a number.");
+        }
+
+        Address receiverAddress = null;
+        if (cmd.hasOption("toid")) {
+            int receiverId;
+            try {
+                receiverId = Integer.parseInt(cmd.getOptionValue("toid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(receiverId)) {
+                throw new IllegalArgumentException("Client ID " + receiverId + " does not exist.");
+            }
+            receiverAddress = networkClients.get(receiverId).getAddress();
+        } else if (cmd.hasOption("to")) {
+            try {
+                receiverAddress = Address.fromHexString(cmd.getOptionValue("to"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+
+        String functionSignature = DataUtils.getFunctionSignature("transfer(address,uint256)");
+
+        Transaction transaction =  new Transaction(transactionId, senderAddress, receiverAddress, functionSignature, amount);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to {}", receiverAddress, e);
+        }
+
+        return transaction;
     }
 
     /**
@@ -108,7 +188,10 @@ public class BlockchainClient {
         ConfigLoader config = new ConfigLoader(configFile);
 
         int numServers = config.getIntProperty("NUM_SERVERS");
+        int numClients = config.getIntProperty("NUM_CLIENTS");
         int basePort = config.getIntProperty("BASE_PORT_CLIENT_TO_SERVER");
+        int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
+
         this.port = config.getIntProperty("BASE_PORT_CLIENTS") + id;
         this.timeout = config.getIntProperty("TIMEOUT");
 
@@ -117,7 +200,40 @@ public class BlockchainClient {
             networkNodes.put(i, new NodeRegistry(i, "server", "localhost", port));
         }
 
-        logger.debug("[CONFIG] Loaded nodes from config:");
+        for (int i = 0; i < numClients; i++) {
+            int port = basePortClients + i;
+            networkClients.put(i, new NodeRegistry(i, "client", "localhost", port));
+        }
+
+        logger.debug("[CONFIG] Loaded nodes and clients from config:");
         networkNodes.values().forEach(node -> logger.debug("[CONFIG] {}{}: {}:{}", node.getType(), node.getId(), node.getIp(), node.getPort()));
+        networkClients.values().forEach(node -> logger.debug("[CONFIG] client{}: {}:{}", node.getId(), node.getIp(), node.getPort()));
+    }
+
+    /**
+     * Prints a welcome message and instructions for using the DepChain app.
+     */
+    private void printWelcomeMessage() {
+        System.out.println("=============================================================");
+        System.out.println("               Welcome to the DepChain Blockchain            ");
+        System.out.println("                    Client ID: " + this.id);
+        System.out.println("=============================================================");
+        System.out.println("██████╗ ███████╗██████╗  ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗");
+        System.out.println("██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██╔══██╗██║████╗  ██║");
+        System.out.println("██║  ██║█████╗  ██████╔╝██║     ███████║███████║██║██╔██╗ ██║");
+        System.out.println("██║  ██║██╔══╝  ██╔═══╝ ██║     ██╔══██║██╔══██║██║██║╚██╗██║");
+        System.out.println("██████╔╝███████╗██║     ╚██████╗██║  ██║██║  ██║██║██║ ╚████║");
+        System.out.println("╚═════╝ ╚══════╝╚═╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝");
+        System.out.println("=============================================================");
+        System.out.println("  Your address is " + networkClients.get(this.id).getAddress().toHexString());
+        System.out.println("=============================================================");
+        System.out.println("        Instructions:");
+        System.out.println("        1. To perform a transfer, enter the command:");
+        System.out.println("           send -amount <value> [-toid <clientID>, -to <address>]");
+        System.out.println("        2. To exit the application, type 'exit'.");
+        System.out.println("=============================================================");
+        System.out.println("        Available Clients:");
+        networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
+        System.out.println("=============================================================");
     }
 }

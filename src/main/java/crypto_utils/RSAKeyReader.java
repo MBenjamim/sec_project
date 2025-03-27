@@ -59,7 +59,7 @@ public class RSAKeyReader {
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
 
         PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
-        logger.info("Private key successfully read from file {}", privateKeyPath);
+        logger.debug("Private key successfully read from file {}", privateKeyPath);
         return privateKey;
     }
 
@@ -78,7 +78,7 @@ public class RSAKeyReader {
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
 
         PublicKey pubKey = keyFactory.generatePublic(keySpec);
-        logger.info("Public key successfully read from file {}", pubKeyPath);
+        logger.debug("Public key successfully read from file {}", pubKeyPath);
         return pubKey;
     }
 
@@ -90,7 +90,7 @@ public class RSAKeyReader {
      * @throws IOException if an I/O error occurs
      */
     private static byte[] readKey(String keyPath) throws IOException {
-        logger.info("Reading key from file {}...", keyPath);
+        logger.debug("Reading key from file {}...", keyPath);
         byte[] encoded;
         try (FileInputStream fis = new FileInputStream(keyPath)) {
             encoded = new byte[fis.available()];

@@ -2,10 +2,13 @@ package main.java.common;
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import lombok.Getter;
 import lombok.Setter;
+import main.java.blockchain.AddressGenerator;
 import main.java.crypto_utils.RSAKeyReader;
+import org.hyperledger.besu.datatypes.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +25,7 @@ public class NodeRegistry {
     private int id;
     private String type;
     private PublicKey publicKey;
+    private Address address;
 
     private SecretKey sendSessionKey; // key used to send messages to this node
     private SecretKey recvSessionKey; // key used to receive messages from this node
@@ -44,6 +48,7 @@ public class NodeRegistry {
         this.publicKey = null;
         this.sendSessionKey = null;
         this.recvSessionKey = null;
+        this.address = null;
     }
 
     /**
@@ -55,11 +60,22 @@ public class NodeRegistry {
         try {
             if (publicKey == null) {
                 this.publicKey = RSAKeyReader.readPublicKey(publicKeysDir + type + id + "_public.key");
+                if (Objects.equals(type, "client")) {
+                    this.address = AddressGenerator.generateAddress(publicKey);
+                }
             }
+
         } catch (Exception e) {
             logger.error("Failed to read public key", e);
         }
         return publicKey;
+    }
+
+    synchronized public Address getAddress() {
+        if (this.address ==  null) {
+            getPublicKey();
+        }
+        return this.address;
     }
 
     /**
