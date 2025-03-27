@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Base64;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -45,6 +46,20 @@ public class Transaction {
         this.receiverAddress = receiverAddress;
         this.functionSignature = functionSignature;
         this.amount = amount;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Transaction t = (Transaction) o;
+        return Objects.equals(transactionId, t.transactionId) && Objects.equals(getSignatureBase64(), t.getSignatureBase64());
     }
 
     /**

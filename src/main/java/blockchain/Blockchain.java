@@ -22,8 +22,6 @@ public class Blockchain {
     private final Set<String> decidedTransactions = new HashSet<>();
     private long currentBlock = 0;
 
-    // private final Map<Long, main.java.consensus.Block> deprecatedBlocks = new HashMap<>(); // FIXME - remove this
-
     /**
      * Creates the blockchain, initializing every account from genesis block file.
      *

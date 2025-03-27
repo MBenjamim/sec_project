@@ -110,8 +110,8 @@ public class BlockchainClient {
                 String messageContent = transaction.toJson();
                 logger.debug("Sending transaction: \n {}", messageContent);
                 networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
-                long timestamp = collector.waitForConfirmation(messageContent);
-                logger.info("Value '{}' appended to the blockchain with timestamp {}", messageContent, timestamp);
+                long timestamp = collector.waitForConfirmation();
+                logger.info("Your transaction was executed on block with timestamp {}:\n{}", timestamp, collector.getCollectedTransactions().get(timestamp));
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }

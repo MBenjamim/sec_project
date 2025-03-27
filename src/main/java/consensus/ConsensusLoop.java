@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import main.java.blockchain.Blockchain;
 import main.java.blockchain.Transaction;
@@ -37,7 +36,7 @@ public class ConsensusLoop implements Runnable {
     private boolean inConsensus;
 
     public ConsensusLoop(BlockchainNetworkServer server, Behavior behavior) {
-        this.currIndex = 0;
+        this.currIndex = 1;
         this.inConsensus = false;
         this.server = server;
         this.behavior = behavior;
@@ -192,9 +191,7 @@ public class ConsensusLoop implements Runnable {
 
     synchronized public void decide(long consensusIndex, List<Transaction> transactions) {
         if (blockchain.addTransactionsForBlock(consensusIndex, transactions)) return;
-        logger.info("Transactions before: {}", Consensus.transactionsToJson(transactions));
-        transactions.forEach(requests::remove); // TODO - check the string not the object or define the equals
-        logger.info("Transactions after: {}", Consensus.transactionsToJson(transactions));
+        transactions.forEach(requests::remove);
         inConsensus = false;
         currIndex++;
 
@@ -224,7 +221,7 @@ public class ConsensusLoop implements Runnable {
         // Propose
         Consensus consensus = getConsensusInstance(currIndex);
         // FIXME - for now test using just 5 max transactions per block
-        List<Transaction> transactions = requests.stream().limit(5).toList();
+        List<Transaction> transactions = requests.stream().limit(20).toList();
         Integer epochTS = consensus.proposeToEpoch(transactions);
         if (epochTS == null) return;
         inConsensus = true;
@@ -275,8 +272,6 @@ public class ConsensusLoop implements Runnable {
         if (requestMessage.getContent().isBlank()) return;
         Transaction transaction = Transaction.fromJson(requestMessage.getContent());
         if (transaction == null || !transaction.isValid(blockchain, server.getKeyManager())) return;
-
-        logger.info("TRANSACTION is valid: {}", transaction.toJson()); // DEBUG
 
         requests.add(transaction);
         wakeup();
