@@ -70,12 +70,7 @@ public class GenesisBlockGenerator {
         // client 1 is blacklisted by default
         executor.addToBlacklist(ownerAddr, eoaList.get(1));
 
-        // FIXME: for some reason balances are not updated directly by Transfer() event
-        // executor.fixBalancesFromStorage(world);
-
-        Block genesisBlock = new Block(null);
-        genesisBlock.setAddresses(blacklistAddr, tokenAddr);
-        genesisBlock.setWorld(world);
+        Block genesisBlock = new Block(world, blacklistAddr, tokenAddr, null);
         genesisBlock.hashBlock();
 
         // DEBUG
@@ -125,6 +120,10 @@ public class GenesisBlockGenerator {
         }
 
         // DEBUG: obtain world from genesis block file
-        // Block.loadFromFile(genesisBlockPath).debugState();
+        // Block block = Block.loadFromFile(genesisBlockPath);
+        // block.debugState();
+
+        // DEBUG: test smart contract execution
+        // SmartContractExecutor executor = new SmartContractExecutor(block.getWorld(), block.getBlacklistAddress(), block.getTokenAddress());
     }
 }

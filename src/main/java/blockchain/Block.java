@@ -40,8 +40,10 @@ public class Block {
     @JsonIgnore
     private SimpleWorld world;
 
-    public Block(String previousBlockHash) {
+    public Block(SimpleWorld world, Address blacklistAddress, Address tokenAddress, String previousBlockHash) {
         this.previousBlockHash = previousBlockHash;
+        this.world = world;
+        setAddresses(blacklistAddress, tokenAddress);
     }
 
     @JsonCreator

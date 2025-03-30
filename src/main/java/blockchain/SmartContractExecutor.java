@@ -3,9 +3,7 @@ package main.java.blockchain;
 import lombok.Getter;
 import main.java.utils.DataUtils;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.EvmSpecVersion;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.fluent.EVMExecutor;
@@ -18,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigInteger;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -55,20 +52,20 @@ public class SmartContractExecutor {
 
         // ISTCoin.sol functions (commented are not implemented)
         //addFunctionSignature("accessControl()", TransactionType.ACCESS_CONTROL);
-        //addFunctionSignature("allowance(address,address)", TransactionType.ALLOWANCE);
-        //addFunctionSignature("approve(address,uint256)", TransactionType.APPROVE);    TODO
+        addFunctionSignature("allowance(address,address)", TransactionType.ALLOWANCE);
+        addFunctionSignature("approve(address,uint256)", TransactionType.APPROVE);
         addFunctionSignature("balanceOf(address)", TransactionType.BALANCE_OF);
         //addFunctionSignature("decimals()", TransactionType.DECIMALS);
         //addFunctionSignature("name()", TransactionType.NAME);
         //addFunctionSignature("symbol()", TransactionType.SYMBOL);
-        //addFunctionSignature("totalSupply()", TransactionType.TOTAL_SUPPLY);          TODO
+        addFunctionSignature("totalSupply()", TransactionType.TOTAL_SUPPLY);
         addFunctionSignature("transfer(address,uint256)", TransactionType.TRANSFER);
-        //addFunctionSignature("transferFrom(address,address,uint256)", TransactionType.TRANSFER_FROM); TODO
+        addFunctionSignature("transferFrom(address,address,uint256)", TransactionType.TRANSFER_FROM);
     }
 
     public SmartContractExecutor(SimpleWorld world, Address blacklist, Address token) {
         this(world);
-        setTokenContract(world.getAccount(blacklist));
+        setBlacklistContract(world.getAccount(blacklist));
         setTokenContract(world.getAccount(token));
     }
 
@@ -115,7 +112,26 @@ public class SmartContractExecutor {
                 .sender(ownerAddr)
                 .receiver(contractAddr)
                 .execute();
+        outputStream.reset();
         return contractAddr;
+    }
+
+    /**
+     * Executes a smart contract, updating the world state.
+     *
+     * @param caller          the address of the user calling the smart contract
+     * @param bytecode        the bytecode of the smart contract to be executed
+     * @param contractAddress the address of smart contract to be executed
+     * @param input           the input arguments including function signature
+     */
+    private void executeContract(Address caller, Bytes bytecode, Address contractAddress, Bytes input) {
+        outputStream.reset(); // keep only info about this execution
+        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
+                .code(bytecode)
+                .callData(input)
+                .sender(caller)
+                .receiver(contractAddress)
+                .execute();
     }
 
     /**
@@ -124,13 +140,11 @@ public class SmartContractExecutor {
     public boolean addToBlacklist(Address caller, Address address) {
         String functionSignature = typeToSignature.get(TransactionType.ADD_TO_BLACKLIST);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
-        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                .code(blacklistBytecode)
-                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
-                .sender(caller)
-                .receiver(blacklistAddress)
-                .execute();
-        return true; // FIXME - real return value
+
+        executeContract(caller, blacklistBytecode, blacklistAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
     }
 
     /**
@@ -139,13 +153,11 @@ public class SmartContractExecutor {
     public boolean isBlacklisted(Address caller, Address address) {
         String functionSignature = typeToSignature.get(TransactionType.IS_BLACKLISTED);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
-        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                .code(blacklistBytecode)
-                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
-                .sender(caller)
-                .receiver(blacklistAddress)
-                .execute();
-        return true; // FIXME - real return value
+
+        executeContract(caller, blacklistBytecode, blacklistAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
     }
 
     /**
@@ -154,65 +166,94 @@ public class SmartContractExecutor {
     public boolean removeFromBlacklist(Address caller, Address address) {
         String functionSignature = typeToSignature.get(TransactionType.REMOVE_FROM_BLACKLIST);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
-        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                .code(blacklistBytecode)
-                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
-                .sender(caller)
-                .receiver(blacklistAddress)
-                .execute();
-        return true; // FIXME - real return value
+
+        executeContract(caller, blacklistBytecode, blacklistAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
     }
 
     /**
-     * Executes transfer(address,uint256) method from ISTCoin smart contract.
+     * Executes "allowance(address,address)" method from ISTCoin smart contract.
      */
-    public void transfer(Address from, Address to, double amount) {
-        String functionSignature = typeToSignature.get(TransactionType.TRANSFER);
-        String paddedReceiver = DataUtils.padHexString(to.toHexString());
+    public long allowance(Address caller, Address owner, Address spender) {
+        String functionSignature = typeToSignature.get(TransactionType.ALLOWANCE);
+        String paddedAddress1 = DataUtils.padHexString(owner.toHexString());
+        String paddedAddress2 = DataUtils.padHexString(spender.toHexString());
+
+        executeContract(owner, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress1 + paddedAddress2));
+
+        return (long) ReturnDataParser.getResult(outputStream, ReturnType.UINT256);
+    }
+
+    /**
+     * Executes "approve(address,uint256)" method from ISTCoin smart contract.
+     */
+    public boolean approve(Address owner, Address spender, double amount) {
+        String functionSignature = typeToSignature.get(TransactionType.APPROVE);
+        String paddedAddress = DataUtils.padHexString(spender.toHexString());
         String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
-        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                .code(tokenBytecode)
-                .callData(Bytes.fromHexString(functionSignature + paddedReceiver + value))
-                .sender(from)
-                .receiver(tokenAddress)
-                .execute();
+
+        executeContract(owner, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress + value));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
     }
 
     /**
      * Executes "balanceOf(address)" method from ISTCoin smart contract.
      */
-    public Long balanceOf(Address caller, Address address) {
+    public long balanceOf(Address caller, Address address) {
         String functionSignature = typeToSignature.get(TransactionType.BALANCE_OF);
         String paddedAddress = DataUtils.padHexString(address.toHexString());
-        executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-                .code(tokenBytecode)
-                .callData(Bytes.fromHexString(functionSignature + paddedAddress))
-                .sender(caller)
-                .receiver(tokenAddress)
-                .execute();
-        return DataUtils.extractLongFromReturnData(outputStream);
+
+        executeContract(caller, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature + paddedAddress));
+
+        return (long) ReturnDataParser.getResult(outputStream, ReturnType.UINT256);
     }
 
-//  DEPRECATED
-//    /**
-//     * FIXME - for some reason balances are not updated directly by Transfer() event
-//     */
-//    public void fixBalancesFromStorage(SimpleWorld world) {
-//        String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
-//        Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
-//        for (MutableAccount account : list) {
-//            String paddedAddr = DataUtils.padHexString(account.getAddress().toHexString());
-//            executor.messageFrameType(MessageFrame.Type.MESSAGE_CALL)
-//                    .code(tokenBytecode)
-//                    .callData(Bytes.fromHexString(functionSignature + paddedAddr))
-//                    .sender(tokenAddress)
-//                    .receiver(tokenAddress)
-//                    .execute();
-//            // update balance manually
-//            account.setBalance(Wei.fromHexString(Long.toHexString(DataUtils.extractLongFromReturnData(outputStream))));
-//            executor.worldUpdater(world.updater()).commitWorldState();
-//        }
-//    }
+    /**
+     * Executes totalSupply() method from ISTCoin smart contract.
+     */
+    public long totalSupply(Address caller) {
+        String functionSignature = typeToSignature.get(TransactionType.TRANSFER);
+
+        executeContract(caller, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature));
+
+        return (long) ReturnDataParser.getResult(outputStream, ReturnType.UINT256);
+    }
+
+    /**
+     * Executes transfer(address,uint256) method from ISTCoin smart contract.
+     */
+    public boolean transfer(Address from, Address to, double amount) {
+        String functionSignature = typeToSignature.get(TransactionType.TRANSFER);
+        String paddedReceiver = DataUtils.padHexString(to.toHexString());
+        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
+
+        executeContract(from, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature + paddedReceiver + value));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
+    }
+
+    /**
+     * Executes transferFrom(address,address,uint256) method from ISTCoin smart contract.
+     */
+    public boolean transferFrom(Address caller, Address from, Address to, double amount) {
+        String functionSignature = typeToSignature.get(TransactionType.TRANSFER_FROM);
+        String paddedSender = DataUtils.padHexString(from.toHexString());
+        String paddedReceiver = DataUtils.padHexString(to.toHexString());
+        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
+
+        executeContract(caller, tokenBytecode, tokenAddress,
+                Bytes.fromHexString(functionSignature + paddedSender + paddedReceiver + value));
+
+        return (boolean) ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
+    }
 
     /**
      * Utility function to convert double to uint256.

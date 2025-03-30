@@ -23,6 +23,9 @@ public class ConsensusLoop implements Runnable {
 
     private static final String genesisBlockPath = "genesis_block.json";
 
+    // limit of transactions to be ordered during consensus and to be executed in a single block
+    private static final int MAX_TRANSACTIONS_PER_BLOCK = 10;
+
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
     private final List<Transaction> requests = new ArrayList<>();
     private final BlockchainNetworkServer server;
@@ -220,8 +223,7 @@ public class ConsensusLoop implements Runnable {
 
         // Propose
         Consensus consensus = getConsensusInstance(currIndex);
-        // FIXME - for now test using just 5 max transactions per block
-        List<Transaction> transactions = requests.stream().limit(20).toList();
+        List<Transaction> transactions = requests.stream().limit(MAX_TRANSACTIONS_PER_BLOCK).toList();
         Integer epochTS = consensus.proposeToEpoch(transactions);
         if (epochTS == null) return;
         inConsensus = true;
