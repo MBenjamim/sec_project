@@ -11,7 +11,7 @@ import java.security.PublicKey;
 import java.util.*;
 
 @Getter
-public class Blockchain {
+public class Blockchain implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(Blockchain.class);
 
     private SmartContractExecutor executor;
@@ -21,6 +21,7 @@ public class Blockchain {
     private final Map<Long, List<Transaction>> pendingTransactions = new HashMap<>();
     private final Set<String> decidedTransactions = new HashSet<>();
     private long currentBlock = 0;
+    private String previousBlockHash;
 
     /**
      * Creates the blockchain, initializing every account from genesis block file.
@@ -44,7 +45,61 @@ public class Blockchain {
         this.executor = new SmartContractExecutor(world, genesisBlock.getBlacklistAddress(), genesisBlock.getTokenAddress());
         blocks.put(currentBlock, genesisBlock.toJson());
         currentBlock++;
+        this.previousBlockHash = genesisBlock.getBlockHash();
         logger.info("Blockchain initialized");
+    }
+
+    @Override
+    public void run() {
+        logger.info("Blockchain started");
+        while (true) {
+            this.doWork();
+        }
+    }
+
+    /**
+     * Waits for new transaction and for the end of previous consensus instance.
+     * When conditions are met (including being leader for the specified epoch of consensus),
+     * the leader starts (propose) a new consensus epoch for the current instance,
+     * broadcasting READ messages.
+     */
+    synchronized public void doWork() {
+        while (getWaitCondition()) {
+            try {
+                logger.debug("Waiting for transactions");
+                wait(); // wait until condition is met
+            } catch (Exception e) {
+                logger.error(e.getMessage());
+                return;
+            }
+        }
+
+
+        logger.debug("Executing transactions for block {}", currentBlock);
+        for (Transaction transaction : pendingTransactions.remove(currentBlock)) { // removes pending transactions for the block
+            executeTransaction(transaction);
+        }
+
+
+        String previousBlockHash =this.previousBlockHash;
+        Block newBlock = new Block(this.world, this.executor.getBlacklistAddress(), this.executor.getTokenAddress(), previousBlockHash);
+        blocks.put(currentBlock, newBlock.toJson());
+        currentBlock++;
+    }
+
+    /**
+     * Check if this process is there are transactions
+     * to execute
+     *
+     * @return true if conditions are met
+     */
+    private boolean getWaitCondition() {
+        return !pendingTransactions.containsKey(currentBlock) || pendingTransactions.get(currentBlock).isEmpty();
+    }
+
+    synchronized void wakeup() {
+        logger.debug("Waking up");
+        notify();
     }
 
     public TransactionType getTransactionType(String functionSignature) {
@@ -61,9 +116,15 @@ public class Blockchain {
      * @return true if it is the first time adding transactions to the block
      */
     synchronized public boolean addTransactionsForBlock(long blockIndex, List<Transaction> transactions) {
-        if (pendingTransactions.putIfAbsent(blockIndex, transactions) == null) return false;
-        transactions.forEach(transaction -> decidedTransactions.add(transaction.getSignatureBase64()));
-        return true;
+        logger.debug("Adding transactions {} for block {}", transactions, blockIndex);
+        if (pendingTransactions.putIfAbsent(blockIndex, transactions) == null) {
+            transactions.forEach(transaction -> decidedTransactions.add(transaction.getSignatureBase64()));
+            logger.debug("Transactions successfully added");
+            wakeup();
+            return true;
+        }
+        logger.debug("Transactions already exist for block {}", blockIndex);
+        return false;
     }
 
     /**
@@ -83,5 +144,17 @@ public class Blockchain {
      */
     synchronized public boolean checkRepeatedTransaction(String signature) {
         return decidedTransactions.contains(signature);
+    }
+
+    synchronized public TransactionResponse executeTransaction(Transaction transaction){
+        logger.debug("Executing transaction {}", transaction.getTransactionId());
+        TransactionResponse transactionResponse = executor.execute(transaction);
+        if (transactionResponse.isStatus()) {
+            logger.info("Transaction {} executed successfully", transaction.getSignatureBase64());
+        } else {
+            logger.info("Transaction {} failed: {}", transaction.getTransactionId(), transactionResponse.getDescription());
+        }
+
+        return transactionResponse;
     }
 }

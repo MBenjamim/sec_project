@@ -266,4 +266,30 @@ public class SmartContractExecutor {
         double roundedAmount = Math.floor(amount * decimals) / (double) decimals;
         return (long) (roundedAmount * decimals);
     }
+
+    public TransactionResponse execute(Transaction transaction){
+        String functionSignature = transaction.getFunctionSignature();
+        TransactionType type = signatureToType.get(functionSignature);
+        switch (type) {
+            case ADD_TO_BLACKLIST:
+                addToBlacklist(transaction.getSenderAddress(), transaction.getReceiverAddress());
+                break;
+            case IS_BLACKLISTED:
+                isBlacklisted(transaction.getSenderAddress(), transaction.getReceiverAddress());
+                break;
+            case REMOVE_FROM_BLACKLIST:
+                removeFromBlacklist(transaction.getSenderAddress(), transaction.getReceiverAddress());
+                break;
+            case BALANCE_OF:
+                balanceOf(transaction.getSenderAddress(), transaction.getReceiverAddress());
+                break;
+            case TRANSFER:
+                transfer(transaction.getSenderAddress(), transaction.getReceiverAddress(), transaction.getAmount());
+                break;
+            default:
+                logger.error("Function not implemented: {}", type);
+        }
+        return new TransactionResponse(transaction.getTransactionId(), true, "Transaction added to block");
+    }
+
 }

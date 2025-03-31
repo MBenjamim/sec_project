@@ -50,6 +50,8 @@ public class ConsensusLoop implements Runnable {
     @Override
     public void run() {
         logger.info("Consensus loop started");
+        Thread blockchainThread = new Thread(this.blockchain);
+        blockchainThread.start();
         while (true) {
             this.doWork();
         }
@@ -193,12 +195,12 @@ public class ConsensusLoop implements Runnable {
     }
 
     synchronized public void decide(long consensusIndex, List<Transaction> transactions) {
-        if (blockchain.addTransactionsForBlock(consensusIndex, transactions)) return;
+        if (!blockchain.addTransactionsForBlock(consensusIndex, transactions)) return; //returns if the block already exists
         transactions.forEach(requests::remove);
         inConsensus = false;
         currIndex++;
 
-        for (Transaction transaction : transactions) { // FIXME - this should be after running the transactions
+        for (Transaction transaction : transactions) { // FIXME - this should be after running the transactions | Afonso: needs to be changed when we are sure that executions worked
             Message response = new Message(server.generateMessageId(), MessageType.DECISION, server.getId(), transaction.toJson(), consensusIndex, -1);
             server.sendReplyToClient(response, blockchain.getClients().get(transaction.getSenderAddress()).getId());
         }
