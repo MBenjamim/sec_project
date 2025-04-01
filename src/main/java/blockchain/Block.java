@@ -3,6 +3,7 @@ package main.java.blockchain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import main.java.utils.DataUtils;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -40,10 +42,15 @@ public class Block {
     @JsonIgnore
     private SimpleWorld world;
 
+    /**
+     * Constructor for the Block class.
+     * Automatically generates the hash based on previous hash and transactions.
+     */
     public Block(SimpleWorld world, Address blacklistAddress, Address tokenAddress, String previousBlockHash) {
         this.previousBlockHash = previousBlockHash;
         this.world = world;
         setAddresses(blacklistAddress, tokenAddress);
+        hashBlock();
     }
 
     @JsonCreator
@@ -56,12 +63,12 @@ public class Block {
      * Should be performed after setting the transactions to be executed in this block.
      */
     public void hashBlock() {
-        StringBuilder txnData = new StringBuilder();
-        for (Transaction txn : transactions) {
-            txnData.append(txn.toJson());
+        StringBuilder transactionData = new StringBuilder();
+        for (Transaction transaction : transactions) {
+            transactionData.append(transaction.toJson());
         }
 
-        String dataToHash = txnData + (previousBlockHash == null ? "" : previousBlockHash) ;
+        String dataToHash = transactionData + (previousBlockHash == null ? "" : previousBlockHash);
         byte[] bytes = dataToHash.getBytes();
 
         try {
@@ -169,12 +176,13 @@ public class Block {
         logger.info("ACCOUNTS -\taddress\t\t| balance (DepCoin) | account type | balance (ISTCoin)");
         Collection<MutableAccount> list = (Collection<MutableAccount>) world.getTouchedAccounts();
         for (MutableAccount account : list) {
+            TransactionResponse result = new SmartContractExecutor(world, blacklistAddress, tokenAddress).balanceOf(account.getAddress(), account.getAddress());
             logger.info(
                     "{}\t{}\t{}\t{}",
                     account.getAddress().toHexString(),
                     account.getBalance().toLong(),
                     (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA account" : "Contract acc.",
-                    new SmartContractExecutor(world, blacklistAddress, tokenAddress).balanceOf(account.getAddress(), account.getAddress())
+                    result.getResult()
             );
         }
 
@@ -190,6 +198,24 @@ public class Block {
         Map<UInt256, UInt256> storage2 = deployedTokenContract.getUpdatedStorage();
         for (Map.Entry<UInt256, UInt256> entry : storage2.entrySet()) {
             logger.info("{}->{}", entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * Utility to verify if blocks are being generated correctly.
+     */
+    public void debugToFile(String path) {
+        try {
+            // Improve indentation
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(this.toJson());
+            String indentedJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
+
+            try (FileOutputStream fos = new FileOutputStream(path)) {
+                fos.write(indentedJson.getBytes());
+            }
+        } catch (IOException e) {
+            logger.error("Failed to write Block to file: {}", path, e);
         }
     }
 }

@@ -30,6 +30,7 @@ public class ConsensusLoop implements Runnable {
     private final List<Transaction> requests = new ArrayList<>();
     private final BlockchainNetworkServer server;
     private final Blockchain blockchain;
+    private final Thread blockchainThread;
 
     //tests
     private final Behavior behavior;
@@ -39,18 +40,18 @@ public class ConsensusLoop implements Runnable {
     private boolean inConsensus;
 
     public ConsensusLoop(BlockchainNetworkServer server, Behavior behavior) {
-        this.currIndex = 1;
+        this.currIndex = 1; // keep it the same as block indexes for simplicity
         this.inConsensus = false;
         this.server = server;
         this.behavior = behavior;
         this.N = server.getNetworkNodes().size();
-        this.blockchain = new Blockchain(server.getNetworkClients(), genesisBlockPath);
+        this.blockchain = new Blockchain(server, genesisBlockPath);
+        this.blockchainThread = new Thread(blockchain);
     }
 
     @Override
     public void run() {
         logger.info("Consensus loop started");
-        Thread blockchainThread = new Thread(this.blockchain);
         blockchainThread.start();
         while (true) {
             this.doWork();
@@ -197,13 +198,8 @@ public class ConsensusLoop implements Runnable {
     synchronized public void decide(long consensusIndex, List<Transaction> transactions) {
         if (!blockchain.addTransactionsForBlock(consensusIndex, transactions)) return; //returns if the block already exists
         transactions.forEach(requests::remove);
-        inConsensus = false;
         currIndex++;
-
-        for (Transaction transaction : transactions) { // FIXME - this should be after running the transactions | Afonso: needs to be changed when we are sure that executions worked
-            Message response = new Message(server.generateMessageId(), MessageType.DECISION, server.getId(), transaction.toJson(), consensusIndex, -1);
-            server.sendReplyToClient(response, blockchain.getClients().get(transaction.getSenderAddress()).getId());
-        }
+        inConsensus = false;
         wakeup();
     }
 
@@ -275,7 +271,8 @@ public class ConsensusLoop implements Runnable {
     synchronized public void addRequest(Message requestMessage) {
         if (requestMessage.getContent().isBlank()) return;
         Transaction transaction = Transaction.fromJson(requestMessage.getContent());
-        if (transaction == null || !transaction.isValid(blockchain, server.getKeyManager())) return;
+        if (transaction == null || requests.contains(transaction) ||
+                !transaction.isValid(blockchain, server.getKeyManager())) return;
 
         requests.add(transaction);
         wakeup();

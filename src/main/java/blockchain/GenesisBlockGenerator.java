@@ -71,7 +71,6 @@ public class GenesisBlockGenerator {
         executor.addToBlacklist(ownerAddr, eoaList.get(1));
 
         Block genesisBlock = new Block(world, blacklistAddr, tokenAddr, null);
-        genesisBlock.hashBlock();
 
         // DEBUG
         // genesisBlock.debugState();

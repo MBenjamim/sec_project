@@ -1,7 +1,10 @@
 package main.java.blockchain;
 
 import lombok.Getter;
+import main.java.common.Message;
+import main.java.common.MessageType;
 import main.java.common.NodeRegistry;
+import main.java.server.BlockchainNetworkServer;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
 import org.slf4j.Logger;
@@ -14,6 +17,7 @@ import java.util.*;
 public class Blockchain implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(Blockchain.class);
 
+    private final BlockchainNetworkServer server;
     private SmartContractExecutor executor;
     private SimpleWorld world;
     private final Map<Address, NodeRegistry> clients = new HashMap<>();
@@ -29,10 +33,11 @@ public class Blockchain implements Runnable {
      * @param clientNodes        the node registries to associate blockchain address of EOAs to their public keys
      * @param pathToGenesisBlock the path to the genesis block file
      */
-    public Blockchain(Map<Integer, NodeRegistry> clientNodes, String pathToGenesisBlock) {
+    public Blockchain(BlockchainNetworkServer server, String pathToGenesisBlock) {
         Block genesisBlock = Block.loadFromFile(pathToGenesisBlock);
+        this.server = server;
         if (genesisBlock == null) return;
-        for (NodeRegistry registry : clientNodes.values()) {
+        for (NodeRegistry registry : server.getNetworkClients().values()) {
             try {
                 PublicKey publicKey = registry.getPublicKey();
                 Address address = AddressGenerator.generateAddress(publicKey);
@@ -58,10 +63,9 @@ public class Blockchain implements Runnable {
     }
 
     /**
-     * Waits for new transaction and for the end of previous consensus instance.
-     * When conditions are met (including being leader for the specified epoch of consensus),
-     * the leader starts (propose) a new consensus epoch for the current instance,
-     * broadcasting READ messages.
+     * Waits for transactions to be ordered for the current block.
+     * When conditions are met, transactions are executed
+     * and a new the block (with updated state) is added to the blockchain.
      */
     synchronized public void doWork() {
         while (getWaitCondition()) {
@@ -75,23 +79,40 @@ public class Blockchain implements Runnable {
         }
 
 
+        // Execute transactions
         logger.debug("Executing transactions for block {}", currentBlock);
-        for (Transaction transaction : pendingTransactions.remove(currentBlock)) { // removes pending transactions for the block
-            executeTransaction(transaction);
+        List<Transaction> transactions = pendingTransactions.get(currentBlock);
+        List<TransactionResponse> responses = new ArrayList<>();
+        for (Transaction transaction : transactions) {
+            TransactionResponse response = executeTransaction(transaction);
+            response.setClientAddress(transaction.getSenderAddress());
+            responses.add(response);
         }
 
-
-        String previousBlockHash =this.previousBlockHash;
-        Block newBlock = new Block(this.world, this.executor.getBlacklistAddress(), this.executor.getTokenAddress(), previousBlockHash);
+        // Create and append the block
+        Block newBlock = new Block(world, executor.getBlacklistAddress(), executor.getTokenAddress(), previousBlockHash);
+        newBlock.setTransactions(transactions);
         blocks.put(currentBlock, newBlock.toJson());
+        newBlock.debugToFile("server" + server.getId() + "_block" + currentBlock + ".json"); // DEBUG
+
+        // Respond to clients
+        for (TransactionResponse response : responses) {
+            response.setBlockHash(newBlock.getBlockHash());
+            Message msg = new Message(server.generateMessageId(), MessageType.DECISION, server.getId(), response.toJson());
+            server.sendReplyToClient(msg, clients.get(response.getClientAddress()).getId());
+        }
+
+        removeTransactionsForBlock(currentBlock);
+        previousBlockHash = newBlock.getBlockHash();
         currentBlock++;
+        logger.info("APPENDED NEW BLOCK: {} with hash {}", currentBlock, newBlock.getBlockHash());
     }
 
     /**
-     * Check if this process is there are transactions
-     * to execute
+     * Check if the transactions for current block
+     * were ordered in a consensus instance.
      *
-     * @return true if conditions are met
+     * @return true if conditions are not met
      */
     private boolean getWaitCondition() {
         return !pendingTransactions.containsKey(currentBlock) || pendingTransactions.get(currentBlock).isEmpty();
@@ -146,7 +167,7 @@ public class Blockchain implements Runnable {
         return decidedTransactions.contains(signature);
     }
 
-    synchronized public TransactionResponse executeTransaction(Transaction transaction){
+    synchronized public TransactionResponse executeTransaction(Transaction transaction) {
         logger.debug("Executing transaction {}", transaction.getTransactionId());
         TransactionResponse transactionResponse = executor.execute(transaction);
         if (transactionResponse.isStatus()) {

@@ -2,6 +2,7 @@ package main.java.client;
 
 import lombok.Getter;
 import main.java.blockchain.Transaction;
+import main.java.blockchain.TransactionResponse;
 import main.java.common.*;
 
 import java.util.HashMap;
@@ -110,8 +111,8 @@ public class BlockchainClient {
                 String messageContent = transaction.toJson();
                 logger.debug("Sending transaction: \n {}", messageContent);
                 networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
-                long timestamp = collector.waitForConfirmation();
-                logger.info("Your transaction was executed on block with timestamp {}:\n{}", timestamp, collector.getCollectedTransactions().get(timestamp));
+                TransactionResponse response = collector.waitForConfirmation();
+                logger.info(response.toJson()); // TODO - improve message print
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
@@ -120,6 +121,7 @@ public class BlockchainClient {
         }
     }
 
+    // TODO - implement more functions
     private Transaction parseSendCommand(String input) throws ParseException {
         String[] args = input.split("\\s+");
 

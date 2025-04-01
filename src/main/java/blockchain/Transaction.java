@@ -89,18 +89,24 @@ public class Transaction {
     }
 
     /**
-     * Verifies if transaction only has one address (besides the sender one).
+     * Verifies if transaction only has the sender address.
      */
-    public boolean hasOnlyAddress() {
-        return ownerAddress == null && receiverAddress != null && amount == null;
+    public boolean hasNoAddress() {
+        return ownerAddress == null && receiverAddress == null;
     }
 
     /**
-     * Verifies if transaction only has one address (besides the sender one),
-     * and has the amount field different from null.
+     * Verifies if transaction only has one address (besides the sender one).
      */
-    public boolean hasAddressAndAmount() {
-        return ownerAddress == null && receiverAddress != null && amount != null;
+    public boolean hasOneAddress() {
+        return ownerAddress == null && receiverAddress != null;
+    }
+
+    /**
+     * Verifies if transaction has two address (besides the sender one).
+     */
+    public boolean hasTwoAddresses() {
+        return ownerAddress != null && receiverAddress != null;
     }
 
     /**
@@ -133,14 +139,26 @@ public class Transaction {
         if (type == null) return false;
 
         // verify if arguments of the function are correct
-        switch (type) { // FIXME - there are more functions
+        switch (type) {
             case ADD_TO_BLACKLIST:
             case IS_BLACKLISTED:
             case REMOVE_FROM_BLACKLIST:
             case BALANCE_OF:
-                if (!hasOnlyAddress()) return false;
+                if (!hasOneAddress() || amount != null) return false;
+                break;
+            case APPROVE:
             case TRANSFER:
-                if (!hasAddressAndAmount()) return false;
+                if (!hasOneAddress() || amount == null) return false;
+                break;
+            case ALLOWANCE:
+                if (!hasTwoAddresses() || amount != null) return false;
+                break;
+            case TRANSFER_FROM:
+                if (!hasTwoAddresses() || amount == null) return false;
+                break;
+            case TOTAL_SUPPLY:
+                if (!hasNoAddress() || amount != null) return false;
+                break;
         }
 
         return true;

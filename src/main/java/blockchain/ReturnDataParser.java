@@ -14,22 +14,28 @@ import java.nio.charset.StandardCharsets;
 public class ReturnDataParser {
     private static final Logger logger = LoggerFactory.getLogger(ReturnDataParser.class);
 
-    public static Object getResult(ByteArrayOutputStream byteArrayOutputStream, ReturnType type) {
+    public static TransactionResponse getResult(ByteArrayOutputStream byteArrayOutputStream, ReturnType type) {
         boolean success = checkSuccess(byteArrayOutputStream);
-
-        switch (type) {
-            case UINT8:
-            case UINT256:
-                if (!success) return -1;
-                return extractUInt256FromReturnData(byteArrayOutputStream).toLong();
-            case BOOL:
-                if (!success) return false;
-                return !extractUInt256FromReturnData(byteArrayOutputStream).isZero();
-            case STRING:
-                if (!success) return null;
-                return extractStringFromReturnData(byteArrayOutputStream);
+        TransactionResponse result = new TransactionResponse(success, type);
+        if (success) {
+            result.setDescription("Transaction added to block.");
+            switch (type) {
+                case UINT8:
+                case UINT256:
+                    result.setResult(extractUInt256FromReturnData(byteArrayOutputStream).toLong());
+                    break;
+                case BOOL:
+                    result.setResult(!extractUInt256FromReturnData(byteArrayOutputStream).isZero());
+                    break;
+                case STRING:
+                    result.setResult(extractStringFromReturnData(byteArrayOutputStream));
+                    break;
+            }
+            return result;
         }
-        return null;
+        String error = extractStringFromErrorMessage(byteArrayOutputStream);
+        result.setDescription((error == null) ? "No description provided." : error);
+        return result;
     }
 
     public static JsonObject jsonFromTracer(ByteArrayOutputStream byteArrayOutputStream) {
