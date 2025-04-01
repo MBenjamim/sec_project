@@ -111,11 +111,27 @@ public class BlockchainClient {
                 String messageContent = transaction.toJson();
                 logger.debug("Sending transaction: \n {}", messageContent);
                 networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
-                TransactionResponse response = collector.waitForConfirmation();
-                logger.info(response.toJson()); // TODO - improve message print
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("balance")) {
+            try {
+                Transaction transaction = parseBalanceCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending BALANCE_OF transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+
+        } else if (input.startsWith("help")) {
+            printHelp();
         } else {
             System.out.println("Error: Unknown command '" + input + "'.");
         }
@@ -182,6 +198,59 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseBalanceCommand(String input) throws ParseException {
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("of", true, "Address to check balance");
+        options.addOption("ofid", true, "Client ID to check balance");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("of") && !cmd.hasOption("ofid")) {
+            throw new IllegalArgumentException("Invalid command format. Expected: balance -of <address> or -ofid <clientID>");
+        }
+
+        Address address = null;
+        if (cmd.hasOption("ofid")) {
+            int clientId;
+            try {
+                clientId = Integer.parseInt(cmd.getOptionValue("ofid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(clientId)) {
+                throw new IllegalArgumentException("Client ID " + clientId + " does not exist.");
+            }
+            address = networkClients.get(clientId).getAddress();
+        } else if (cmd.hasOption("of")) {
+            try {
+                address = Address.fromHexString(cmd.getOptionValue("of"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+
+        String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, address, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to {}", address, e);
+        }
+
+        return transaction;
+    }
+
+
     /**
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
@@ -230,12 +299,37 @@ public class BlockchainClient {
         System.out.println("  Your address is " + networkClients.get(this.id).getAddress().toHexString());
         System.out.println("=============================================================");
         System.out.println("        Instructions:");
-        System.out.println("        1. To perform a transfer, enter the command:");
+        System.out.println("        1. To get list of commands, enter the command:");
+        System.out.println("           help");
+        System.out.println("        2. To perform a transfer, enter the command:");
         System.out.println("           send -amount <value> [-toid <clientID>, -to <address>]");
-        System.out.println("        2. To exit the application, type 'exit'.");
+        System.out.println("        3. To check balance, enter the command:");
+        System.out.println("           balance [-of <address>, -ofid <clientID>]");
+        System.out.println("        4. To exit the application, type 'exit'.");
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
+        System.out.println("=============================================================");
+    }
+
+    private void printHelp() {
+        System.out.println("Usage: send -amount <value> [-toid <clientID>, -to <address>]");
+        System.out.println("       balance [-of <address>, -ofid <clientID>]");
+    }
+
+    private void printTransactionResponse(TransactionResponse response) {
+        System.out.println("=============================================================");
+        System.out.println("                   Transaction Response                      ");
+        System.out.println("=============================================================");
+        System.out.println("Transaction ID: " + response.getTransactionId());
+        System.out.println("Block Hash: " + response.getBlockHash());
+        System.out.println("Status: " + (response.isStatus() ? "Success" : "Failure"));
+        System.out.println("Description: " + response.getDescription());
+        System.out.println("Transaction Type: " + response.getTransactionType());
+        System.out.println("Return Type: " + response.getReturnType());
+        if (response.getResult() != null) {
+            System.out.println("Result: " + response.getResult());
+        }
         System.out.println("=============================================================");
     }
 }
