@@ -48,6 +48,15 @@ public class Transaction {
         this.amount = amount;
     }
 
+    public Transaction(long transactionId, Address senderAddress, Address fromAddress, Address toAddress, String functionSignature, Double amount) {
+        this.transactionId = transactionId;
+        this.senderAddress = senderAddress;
+        this.ownerAddress = fromAddress;
+        this.receiverAddress = toAddress;
+        this.functionSignature = functionSignature;
+        this.amount = amount;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

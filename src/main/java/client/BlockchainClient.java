@@ -144,6 +144,19 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("transfer_from")) {
+            try {
+                Transaction transaction = parseTransferFromCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending TRANSFER_FROM transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -324,6 +337,88 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseTransferFromCommand(String input) throws ParseException {
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("amount", true, "Amount to transfer");
+        options.addOption("fromid", true, "Sender client ID");
+        options.addOption("from", true, "Sender address");
+        options.addOption("toid", true, "Receiver client ID");
+        options.addOption("to", true, "Receiver address");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("amount") || (!cmd.hasOption("fromid") && !cmd.hasOption("from")) || (!cmd.hasOption("toid") && !cmd.hasOption("to"))) {
+            throw new IllegalArgumentException("Invalid command format. Expected: transfer_from -amount <value> -fromid <clientID> or -from <address> -toid <clientID> or -to <address>");
+        }
+
+        double amount;
+        try {
+            amount = Double.parseDouble(cmd.getOptionValue("amount"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Amount must be a number.");
+        }
+
+        Address fromAddress = null;
+        if (cmd.hasOption("fromid")) {
+            int fromId;
+            try {
+                fromId = Integer.parseInt(cmd.getOptionValue("fromid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(fromId)) {
+                throw new IllegalArgumentException("Client ID " + fromId + " does not exist.");
+            }
+            fromAddress = networkClients.get(fromId).getAddress();
+        } else if (cmd.hasOption("from")) {
+            try {
+                fromAddress = Address.fromHexString(cmd.getOptionValue("from"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address toAddress = null;
+        if (cmd.hasOption("toid")) {
+            int toId;
+            try {
+                toId = Integer.parseInt(cmd.getOptionValue("toid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(toId)) {
+                throw new IllegalArgumentException("Client ID " + toId + " does not exist.");
+            }
+            toAddress = networkClients.get(toId).getAddress();
+        } else if (cmd.hasOption("to")) {
+            try {
+                toAddress = Address.fromHexString(cmd.getOptionValue("to"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+
+        String functionSignature = DataUtils.getFunctionSignature("transferFrom(address,address,uint256)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, fromAddress, toAddress, functionSignature, amount);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction from {} to {}", fromAddress, toAddress, e);
+        }
+
+        return transaction;
+    }
+
 
     /**
      * Loads the server nodes from the configuration file.
@@ -381,7 +476,9 @@ public class BlockchainClient {
         System.out.println("           balance [-ofid <clientID>, -of <address>]");
         System.out.println("        4. To approve a spender, enter the command:");
         System.out.println("           approve -amount <value> [-id <clientID>, -address <address>]");
-        System.out.println("        5. To exit the application, type 'exit'.");
+        System.out.println("        5. To transfer from a client to another, enter the command:");
+        System.out.println("           transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
+        System.out.println("        6. To exit the application, type 'exit'.");
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
@@ -393,6 +490,7 @@ public class BlockchainClient {
         System.out.println("  send -amount <value> [-toid <clientID>, -to <address>]");
         System.out.println("  balance [-ofid <clientID>, -of <address>]");
         System.out.println("  approve -amount <value> [-id <clientID>, -address <address>]");
+        System.out.println("  transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
         System.out.println("  help");
     }
 
