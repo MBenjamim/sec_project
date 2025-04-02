@@ -157,6 +157,19 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("total_supply")) {
+            try {
+                Transaction transaction = parseTotalSupplyCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending TOTAL_SUPPLY transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -419,6 +432,21 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseTotalSupplyCommand(String input) throws ParseException {
+        Address senderAddress = networkClients.get(this.id).getAddress();
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+        String functionSignature = DataUtils.getFunctionSignature("totalSupply()");
+        Transaction transaction = new Transaction(transactionId, senderAddress, null, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction for total supply", e);
+        }
+
+        return transaction;
+    }
 
     /**
      * Loads the server nodes from the configuration file.
@@ -478,7 +506,9 @@ public class BlockchainClient {
         System.out.println("           approve -amount <value> [-id <clientID>, -address <address>]");
         System.out.println("        5. To transfer from a client to another, enter the command:");
         System.out.println("           transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
-        System.out.println("        6. To exit the application, type 'exit'.");
+        System.out.println("        6. To get the total supply, enter the command:");
+        System.out.println("           total_supply");
+        System.out.println("        7. To exit the application, type 'exit'.");
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
@@ -491,6 +521,7 @@ public class BlockchainClient {
         System.out.println("  balance [-ofid <clientID>, -of <address>]");
         System.out.println("  approve -amount <value> [-id <clientID>, -address <address>]");
         System.out.println("  transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
+        System.out.println("  total_supply");
         System.out.println("  help");
     }
 
