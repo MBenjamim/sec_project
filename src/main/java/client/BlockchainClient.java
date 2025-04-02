@@ -170,6 +170,19 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("allow")) {
+            try {
+                Transaction transaction = parseAllowCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending ALLOW transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -448,6 +461,80 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseAllowCommand(String input) throws ParseException {
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("ownerid", true, "Owner client ID");
+        options.addOption("owner", true, "Owner address");
+        options.addOption("spenderid", true, "Spender client ID");
+        options.addOption("spender", true, "Spender address");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if ((!cmd.hasOption("ownerid") && !cmd.hasOption("owner")) || (!cmd.hasOption("spenderid") && !cmd.hasOption("spender"))) {
+            throw new IllegalArgumentException("Invalid command format. Expected: allow -ownerid <clientID> or -owner <address> -spenderid <clientID> or -spender <address>");
+        }
+
+        Address ownerAddress = null;
+        if (cmd.hasOption("ownerid")) {
+            int ownerId;
+            try {
+                ownerId = Integer.parseInt(cmd.getOptionValue("ownerid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(ownerId)) {
+                throw new IllegalArgumentException("Client ID " + ownerId + " does not exist.");
+            }
+            ownerAddress = networkClients.get(ownerId).getAddress();
+        } else if (cmd.hasOption("owner")) {
+            try {
+                ownerAddress = Address.fromHexString(cmd.getOptionValue("owner"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address spenderAddress = null;
+        if (cmd.hasOption("spenderid")) {
+            int spenderId;
+            try {
+                spenderId = Integer.parseInt(cmd.getOptionValue("spenderid"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(spenderId)) {
+                throw new IllegalArgumentException("Client ID " + spenderId + " does not exist.");
+            }
+            spenderAddress = networkClients.get(spenderId).getAddress();
+        } else if (cmd.hasOption("spender")) {
+            try {
+                spenderAddress = Address.fromHexString(cmd.getOptionValue("spender"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+
+        String functionSignature = DataUtils.getFunctionSignature("allowance(address,address)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, ownerAddress, spenderAddress, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction for allowance from {} to {}", ownerAddress, spenderAddress, e);
+        }
+
+        return transaction;
+    }
+
     /**
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
@@ -508,7 +595,9 @@ public class BlockchainClient {
         System.out.println("           transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
         System.out.println("        6. To get the total supply, enter the command:");
         System.out.println("           total_supply");
-        System.out.println("        7. To exit the application, type 'exit'.");
+        System.out.println("        7. To check allowance, enter the command:");
+        System.out.println("           allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
+        System.out.println("        8. To exit the application, type 'exit'.");
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
@@ -522,6 +611,7 @@ public class BlockchainClient {
         System.out.println("  approve -amount <value> [-id <clientID>, -address <address>]");
         System.out.println("  transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
         System.out.println("  total_supply");
+        System.out.println("  allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
         System.out.println("  help");
     }
 
