@@ -131,7 +131,19 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("approve")) {
+            try {
+                Transaction transaction = parseApproveCommand(input);
 
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending APPROVE transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -211,7 +223,7 @@ public class BlockchainClient {
         CommandLine cmd = parser.parse(options, args);
 
         if (!cmd.hasOption("of") && !cmd.hasOption("ofid")) {
-            throw new IllegalArgumentException("Invalid command format. Expected: balance -of <address> or -ofid <clientID>");
+            throw new IllegalArgumentException("Invalid command format. Expected: balance -ofid <clientID> or -of <address>");
         }
 
         Address address = null;
@@ -247,6 +259,66 @@ public class BlockchainClient {
             this.keyManager.signTransaction(transaction);
         } catch (Exception e) {
             logger.error("Failed to sign transaction to {}", address, e);
+        }
+
+        return transaction;
+    }
+
+    private Transaction parseApproveCommand(String input) throws ParseException {
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("amount", true, "Amount to approve");
+        options.addOption("id", true, "Spender client ID");
+        options.addOption("address", true, "Spender address");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("amount") || (!cmd.hasOption("id") && !cmd.hasOption("address"))) {
+            throw new IllegalArgumentException("Invalid command format. Expected: approve -amount <value> -id <clientID> or -address <address>");
+        }
+
+        double amount;
+        try {
+            amount = Double.parseDouble(cmd.getOptionValue("amount"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Amount must be a number.");
+        }
+
+        Address spenderAddress = null;
+        if (cmd.hasOption("id")) {
+            int spenderId;
+            try {
+                spenderId = Integer.parseInt(cmd.getOptionValue("id"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(spenderId)) {
+                throw new IllegalArgumentException("Client ID " + spenderId + " does not exist.");
+            }
+            spenderAddress = networkClients.get(spenderId).getAddress();
+        } else if (cmd.hasOption("address")) {
+            try {
+                spenderAddress = Address.fromHexString(cmd.getOptionValue("address"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+
+        long transactionId = networkManager.generateMessageId(); // same as message ID
+
+        String functionSignature = DataUtils.getFunctionSignature("approve(address,uint256)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, spenderAddress, functionSignature, amount);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to {}", spenderAddress, e);
         }
 
         return transaction;
@@ -306,8 +378,10 @@ public class BlockchainClient {
         System.out.println("        2. To perform a transfer, enter the command:");
         System.out.println("           send -amount <value> [-toid <clientID>, -to <address>]");
         System.out.println("        3. To check balance, enter the command:");
-        System.out.println("           balance [-of <address>, -ofid <clientID>]");
-        System.out.println("        4. To exit the application, type 'exit'.");
+        System.out.println("           balance [-ofid <clientID>, -of <address>]");
+        System.out.println("        4. To approve a spender, enter the command:");
+        System.out.println("           approve -amount <value> [-id <clientID>, -address <address>]");
+        System.out.println("        5. To exit the application, type 'exit'.");
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
@@ -315,8 +389,11 @@ public class BlockchainClient {
     }
 
     private void printHelp() {
-        System.out.println("Usage: send -amount <value> [-toid <clientID>, -to <address>]");
-        System.out.println("       balance [-of <address>, -ofid <clientID>]");
+        System.out.println("Usage:");
+        System.out.println("  send -amount <value> [-toid <clientID>, -to <address>]");
+        System.out.println("  balance [-ofid <clientID>, -of <address>]");
+        System.out.println("  approve -amount <value> [-id <clientID>, -address <address>]");
+        System.out.println("  help");
     }
 
     private void printTransactionResponse(TransactionResponse response) {
