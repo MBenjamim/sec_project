@@ -12,6 +12,9 @@ import java.nio.ByteBuffer;
 public final class DataUtils {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
+    // ISTCoin defined decimals
+    private static final int DECIMALS = 2;
+
     /**
      * Converts a byte array to a hexadecimal string.
      *
@@ -94,5 +97,31 @@ public final class DataUtils {
         BigInteger bigInt = BigInteger.valueOf(number);
 
         return String.format("%064x", bigInt);
+    }
+
+    /**
+     * Utility function to convert a real-world amount (with decimals)
+     * to a scaled amount, that is understandable by Solidity contracts.
+     *
+     * @param amount the real-world amount (with decimals) of the token
+     * @return the scaled amount that is understandable by Solidity contracts
+     */
+    public static long convertAmountToLong(double amount) {
+        long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
+        double roundedAmount = Math.floor(amount * decimals) / (double) decimals;
+        return (long) (roundedAmount * decimals);
+    }
+
+    /**
+     * Utility function to convert a scaled amount, that is understandable by Solidity contracts,
+     * to real-world amount (with decimals).
+     *
+     * @param amountObject the scaled amount that is understandable by Solidity contracts
+     * @return the real-world amount (with decimals) of the token
+     */
+    public static double convertAmountToDouble(Object amountObject) {
+        long amount = Long.parseLong(amountObject.toString());
+        long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
+        return (double) amount / decimals;
     }
 }

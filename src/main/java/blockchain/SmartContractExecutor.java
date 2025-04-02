@@ -23,7 +23,6 @@ import java.util.Map;
 public class SmartContractExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SmartContractExecutor.class);
 
-    private static final int DECIMALS = 2;
     private final EVMExecutor executor;
     private Bytes tokenBytecode = null;
     private Bytes blacklistBytecode = null;
@@ -193,7 +192,7 @@ public class SmartContractExecutor {
     public TransactionResponse approve(Address owner, Address spender, double amount) {
         String functionSignature = typeToSignature.get(TransactionType.APPROVE);
         String paddedAddress = DataUtils.padHexString(spender.toHexString());
-        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
+        String value = DataUtils.convertNumberToHex256Bit(DataUtils.convertAmountToLong(amount));
 
         executeContract(owner, tokenBytecode, tokenAddress,
                 Bytes.fromHexString(functionSignature + paddedAddress + value));
@@ -232,7 +231,7 @@ public class SmartContractExecutor {
     public TransactionResponse transfer(Address from, Address to, double amount) {
         String functionSignature = typeToSignature.get(TransactionType.TRANSFER);
         String paddedReceiver = DataUtils.padHexString(to.toHexString());
-        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
+        String value = DataUtils.convertNumberToHex256Bit(DataUtils.convertAmountToLong(amount));
 
         executeContract(from, tokenBytecode, tokenAddress,
                 Bytes.fromHexString(functionSignature + paddedReceiver + value));
@@ -247,24 +246,12 @@ public class SmartContractExecutor {
         String functionSignature = typeToSignature.get(TransactionType.TRANSFER_FROM);
         String paddedSender = DataUtils.padHexString(from.toHexString());
         String paddedReceiver = DataUtils.padHexString(to.toHexString());
-        String value = DataUtils.convertNumberToHex256Bit(convertAmount(amount));
+        String value = DataUtils.convertNumberToHex256Bit(DataUtils.convertAmountToLong(amount));
 
         executeContract(caller, tokenBytecode, tokenAddress,
                 Bytes.fromHexString(functionSignature + paddedSender + paddedReceiver + value));
 
         return ReturnDataParser.getResult(outputStream, ReturnType.BOOL);
-    }
-
-    /**
-     * Utility function to convert double to uint256.
-     *
-     * @param amount the real amount of the token
-     * @return the amount understandable by solidity contracts
-     */
-    private static long convertAmount(double amount) {
-        long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
-        double roundedAmount = Math.floor(amount * decimals) / (double) decimals;
-        return (long) (roundedAmount * decimals);
     }
 
     public TransactionResponse execute(Transaction transaction) {

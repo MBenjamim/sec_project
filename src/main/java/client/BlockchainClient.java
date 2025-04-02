@@ -3,8 +3,10 @@ package main.java.client;
 import lombok.Getter;
 import main.java.blockchain.Transaction;
 import main.java.blockchain.TransactionResponse;
+import main.java.blockchain.TransactionType;
 import main.java.common.*;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -328,7 +330,11 @@ public class BlockchainClient {
         System.out.println("Transaction Type: " + response.getTransactionType());
         System.out.println("Return Type: " + response.getReturnType());
         if (response.getResult() != null) {
-            System.out.println("Result: " + response.getResult());
+            if (response.getTransactionType().equals(TransactionType.BALANCE_OF)) {
+                System.out.println("Result: " + String.format("%.2f", DataUtils.convertAmountToDouble(response.getResult())));
+            } else {
+                System.out.println("Result: " + response.getResult());
+            }
         }
         System.out.println("=============================================================");
     }
