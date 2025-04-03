@@ -209,6 +209,19 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("remove_from_blacklist")) {
+            try {
+                Transaction transaction = parseRemoveFromBlacklistCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending REMOVE_FROM_BLACKLIST transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -216,7 +229,6 @@ public class BlockchainClient {
         }
     }
 
-    // TODO - implement more functions
     private Transaction parseSendCommand(String input) throws ParseException {
         String[] args = input.split("\\s+");
 
@@ -669,6 +681,60 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseRemoveFromBlacklistCommand(String input) throws ParseException {
+        if (this.id != 0) {
+            throw new IllegalArgumentException("Only client0 can execute the remove_from_blacklist command.");
+        }
+
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("id", true, "Client ID to remove from blacklist");
+        options.addOption("address", true, "Address to remove from blacklist");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("id") && !cmd.hasOption("address")) {
+            throw new IllegalArgumentException("Invalid command format. Expected: remove_from_blacklist -id <clientID> or -address <address>");
+        }
+
+        Address addressToRemove = null;
+        if (cmd.hasOption("id")) {
+            int clientId;
+            try {
+                clientId = Integer.parseInt(cmd.getOptionValue("id"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(clientId)) {
+                throw new IllegalArgumentException("Client ID " + clientId + " does not exist.");
+            }
+            addressToRemove = networkClients.get(clientId).getAddress();
+        } else if (cmd.hasOption("address")) {
+            try {
+                addressToRemove = Address.fromHexString(cmd.getOptionValue("address"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+        long transactionId = networkManager.generateMessageId();
+        String functionSignature = DataUtils.getFunctionSignature("removeFromBlacklist(address)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, addressToRemove, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to remove {} from blacklist", addressToRemove, e);
+        }
+
+        return transaction;
+    }
+
     /**
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
@@ -737,6 +803,8 @@ public class BlockchainClient {
             System.out.println("           add_to_blacklist [-id <clientID>, -address <address>]");
             System.out.println("        10. To check if blacklisted, enter the command:");
             System.out.println("           is_blacklisted [-id <clientID>, -address <address>]");
+            System.out.println("        11. To remove from blacklist, enter the command:");
+            System.out.println("           remove_from_blacklist [-id <clientID>, -address <address>]");
         }
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
@@ -755,6 +823,7 @@ public class BlockchainClient {
         if (this.id == 0) {
             System.out.println("  add_to_blacklist [-id <clientID>, -address <address>]");
             System.out.println("  is_blacklisted [-id <clientID>, -address <address>]");
+            System.out.println("  remove_from_blacklist [-id <clientID>, -address <address>]");
         }
         System.out.println("  help");
     }
