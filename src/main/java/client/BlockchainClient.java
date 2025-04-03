@@ -183,6 +183,32 @@ public class BlockchainClient {
             } catch (ParseException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
+        } else if (input.startsWith("add_to_blacklist")) {
+            try {
+                Transaction transaction = parseAddToBlacklistCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending ADD_TO_BLACKLIST transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        } else if (input.startsWith("is_blacklisted")) {
+            try {
+                Transaction transaction = parseIsBlacklistedCommand(input);
+
+                // Create and send a message to each node with different IDs
+                String messageContent = transaction.toJson();
+                logger.debug("Sending IS_BLACKLISTED transaction: \n {}", messageContent);
+                networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+                TransactionResponse transactionResponse = collector.waitForConfirmation();
+                printTransactionResponse(transactionResponse);
+            } catch (ParseException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
         } else if (input.startsWith("help")) {
             printHelp();
         } else {
@@ -535,6 +561,114 @@ public class BlockchainClient {
         return transaction;
     }
 
+    private Transaction parseAddToBlacklistCommand(String input) throws ParseException {
+        if (this.id != 0) {
+            throw new IllegalArgumentException("Only client0 can execute the add_to_blacklist command.");
+        }
+
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("id", true, "Client ID to add to blacklist");
+        options.addOption("address", true, "Address to add to blacklist");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("id") && !cmd.hasOption("address")) {
+            throw new IllegalArgumentException("Invalid command format. Expected: add_to_blacklist -id <clientID> or -address <address>");
+        }
+
+        Address addressToBlacklist = null;
+        if (cmd.hasOption("id")) {
+            int clientId;
+            try {
+                clientId = Integer.parseInt(cmd.getOptionValue("id"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(clientId)) {
+                throw new IllegalArgumentException("Client ID " + clientId + " does not exist.");
+            }
+            addressToBlacklist = networkClients.get(clientId).getAddress();
+        } else if (cmd.hasOption("address")) {
+            try {
+                addressToBlacklist = Address.fromHexString(cmd.getOptionValue("address"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+        long transactionId = networkManager.generateMessageId();
+        String functionSignature = DataUtils.getFunctionSignature("addToBlacklist(address)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, addressToBlacklist, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to add {} to blacklist", addressToBlacklist, e);
+        }
+
+        return transaction;
+    }
+
+    private Transaction parseIsBlacklistedCommand(String input) throws ParseException {
+        if (this.id != 0) {
+            throw new IllegalArgumentException("Only client0 can execute the is_blacklisted command.");
+        }
+
+        String[] args = input.split("\\s+");
+
+        Options options = new Options();
+        options.addOption("id", true, "Client ID to check if blacklisted");
+        options.addOption("address", true, "Address to check if blacklisted");
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
+        if (!cmd.hasOption("id") && !cmd.hasOption("address")) {
+            throw new IllegalArgumentException("Invalid command format. Expected: is_blacklisted -id <clientID> or -address <address>");
+        }
+
+        Address addressToCheck = null;
+        if (cmd.hasOption("id")) {
+            int clientId;
+            try {
+                clientId = Integer.parseInt(cmd.getOptionValue("id"));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Client ID must be an integer.");
+            }
+            if (!networkClients.containsKey(clientId)) {
+                throw new IllegalArgumentException("Client ID " + clientId + " does not exist.");
+            }
+            addressToCheck = networkClients.get(clientId).getAddress();
+        } else if (cmd.hasOption("address")) {
+            try {
+                addressToCheck = Address.fromHexString(cmd.getOptionValue("address"));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid address format.");
+            }
+        }
+
+        Address senderAddress = networkClients.get(this.id).getAddress();
+        long transactionId = networkManager.generateMessageId();
+        String functionSignature = DataUtils.getFunctionSignature("isBlacklisted(address)");
+
+        Transaction transaction = new Transaction(transactionId, senderAddress, addressToCheck, functionSignature, null);
+
+        // sign the transaction
+        try {
+            this.keyManager.signTransaction(transaction);
+        } catch (Exception e) {
+            logger.error("Failed to sign transaction to check if {} is blacklisted", addressToCheck, e);
+        }
+
+        return transaction;
+    }
+
     /**
      * Loads the server nodes from the configuration file.
      * Creates the NetworkManager.
@@ -583,21 +717,27 @@ public class BlockchainClient {
         System.out.println("  Your address is " + networkClients.get(this.id).getAddress().toHexString());
         System.out.println("=============================================================");
         System.out.println("        Instructions:");
-        System.out.println("        1. To get list of commands, enter the command:");
+        System.out.println("        1. To exit the application, type 'exit'.");
+        System.out.println("        2. To get list of commands, enter the command:");
         System.out.println("           help");
-        System.out.println("        2. To perform a transfer, enter the command:");
+        System.out.println("        3. To perform a transfer, enter the command:");
         System.out.println("           send -amount <value> [-toid <clientID>, -to <address>]");
-        System.out.println("        3. To check balance, enter the command:");
+        System.out.println("        4. To check balance, enter the command:");
         System.out.println("           balance [-ofid <clientID>, -of <address>]");
-        System.out.println("        4. To approve a spender, enter the command:");
+        System.out.println("        5. To approve a spender, enter the command:");
         System.out.println("           approve -amount <value> [-id <clientID>, -address <address>]");
-        System.out.println("        5. To transfer from a client to another, enter the command:");
+        System.out.println("        6. To transfer from a client to another, enter the command:");
         System.out.println("           transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
-        System.out.println("        6. To get the total supply, enter the command:");
+        System.out.println("        7. To get the total supply, enter the command:");
         System.out.println("           total_supply");
-        System.out.println("        7. To check allowance, enter the command:");
+        System.out.println("        8. To check allowance, enter the command:");
         System.out.println("           allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
-        System.out.println("        8. To exit the application, type 'exit'.");
+        if (this.id == 0) {
+            System.out.println("        9. To add to blacklist, enter the command:");
+            System.out.println("           add_to_blacklist [-id <clientID>, -address <address>]");
+            System.out.println("        10. To check if blacklisted, enter the command:");
+            System.out.println("           is_blacklisted [-id <clientID>, -address <address>]");
+        }
         System.out.println("=============================================================");
         System.out.println("        Available Clients:");
         networkClients.keySet().forEach(clientId -> System.out.println("        - Client ID: " + clientId));
@@ -612,6 +752,10 @@ public class BlockchainClient {
         System.out.println("  transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
         System.out.println("  total_supply");
         System.out.println("  allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
+        if (this.id == 0) {
+            System.out.println("  add_to_blacklist [-id <clientID>, -address <address>]");
+            System.out.println("  is_blacklisted [-id <clientID>, -address <address>]");
+        }
         System.out.println("  help");
     }
 
