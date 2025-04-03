@@ -180,7 +180,7 @@ public class SmartContractExecutor {
         String paddedAddress1 = DataUtils.padHexString(owner.toHexString());
         String paddedAddress2 = DataUtils.padHexString(spender.toHexString());
 
-        executeContract(owner, tokenBytecode, tokenAddress,
+        executeContract(caller, tokenBytecode, tokenAddress,
                 Bytes.fromHexString(functionSignature + paddedAddress1 + paddedAddress2));
 
         return ReturnDataParser.getResult(outputStream, ReturnType.UINT256);
