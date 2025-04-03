@@ -628,9 +628,6 @@ public class BlockchainClient {
     }
 
     private Transaction parseIsBlacklistedCommand(String input) throws ParseException {
-        if (this.id != 0) {
-            throw new IllegalArgumentException("Only client0 can execute the is_blacklisted command.");
-        }
 
         String[] args = input.split("\\s+");
 
@@ -798,11 +795,11 @@ public class BlockchainClient {
         System.out.println("           total_supply");
         System.out.println("        8. To check allowance, enter the command:");
         System.out.println("           allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
+        System.out.println("        9. To check if blacklisted, enter the command:");
+        System.out.println("           is_blacklisted [-id <clientID>, -address <address>]");
         if (this.id == 0) {
-            System.out.println("        9. To add to blacklist, enter the command:");
+            System.out.println("        10. To add to blacklist, enter the command:");
             System.out.println("           add_to_blacklist [-id <clientID>, -address <address>]");
-            System.out.println("        10. To check if blacklisted, enter the command:");
-            System.out.println("           is_blacklisted [-id <clientID>, -address <address>]");
             System.out.println("        11. To remove from blacklist, enter the command:");
             System.out.println("           remove_from_blacklist [-id <clientID>, -address <address>]");
         }
@@ -820,9 +817,9 @@ public class BlockchainClient {
         System.out.println("  transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
         System.out.println("  total_supply");
         System.out.println("  allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
+        System.out.println("  is_blacklisted [-id <clientID>, -address <address>]");
         if (this.id == 0) {
             System.out.println("  add_to_blacklist [-id <clientID>, -address <address>]");
-            System.out.println("  is_blacklisted [-id <clientID>, -address <address>]");
             System.out.println("  remove_from_blacklist [-id <clientID>, -address <address>]");
         }
         System.out.println("  help");
@@ -839,7 +836,7 @@ public class BlockchainClient {
         System.out.println("Transaction Type: " + response.getTransactionType());
         System.out.println("Return Type: " + response.getReturnType());
         if (response.getResult() != null) {
-            if (response.getTransactionType().equals(TransactionType.BALANCE_OF)) {
+            if (response.getTransactionType().equals(TransactionType.BALANCE_OF) || response.getTransactionType().equals(TransactionType.TOTAL_SUPPLY)) {
                 System.out.println("Result: " + String.format("%.2f", DataUtils.convertAmountToDouble(response.getResult())));
             } else {
                 System.out.println("Result: " + response.getResult());
