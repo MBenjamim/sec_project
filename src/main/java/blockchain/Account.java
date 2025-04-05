@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+import main.java.utils.DataUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Wei;
@@ -12,6 +13,7 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,13 +49,13 @@ public class Account {
     }
 
     @JsonProperty("balance")
-    public Long getBalanceJson() {
-        return balance.toLong();
+    public String getBalanceJson() {
+        return DataUtils.convertAmountToBigDecimalString(balance);
     }
 
     @JsonProperty("balance")
-    public void setBalanceJson(Long balance) {
-        this.balance = Wei.of(balance);
+    public void setBalanceJson(String balance) {
+        this.balance = DataUtils.convertAmountToWei(balance);
     }
 
     @JsonProperty("code")
