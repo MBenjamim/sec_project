@@ -174,7 +174,7 @@ public class Blockchain implements Runnable {
         TransactionResponse transactionResponse;
         if (transaction.getFunctionSignature() == null) {
             transactionResponse = nativeExecutor.performTransaction(transaction);
-            // FIXME - may need to updated / commit world state
+            executor.getExecutor().worldUpdater(world.updater()).commitWorldState();
         } else {
             transactionResponse = executor.execute(transaction);
         }

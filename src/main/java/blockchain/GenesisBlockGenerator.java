@@ -6,6 +6,7 @@ import main.java.crypto_utils.RSAKeyReader;
 import main.java.utils.DataUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.fluent.SimpleWorld;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,7 @@ public class GenesisBlockGenerator {
         // set the world and EVM
         SimpleWorld world = new SimpleWorld();
         SmartContractExecutor executor = new SmartContractExecutor(world);
+        NativeExecutor nativeExecutor = new NativeExecutor(world);
 
         // create client accounts (i.e. EOA accounts) from their addresses
         for (Address address : eoaList) {
@@ -62,9 +64,11 @@ public class GenesisBlockGenerator {
         Address tokenAddr = executor.deployContract(tokenBytecode, ownerAddr, 1);
         executor.setTokenContract(world.getAccount(tokenAddr));
 
-        // transfer 1000 tokens to each account
+        // transfer 1000 tokens (ISTCoin) to each account & set initial native balances (DepCoin)
         for (Address address : eoaList) {
             executor.transfer(ownerAddr, address, 1000);
+            nativeExecutor.initialAmount(address, (address.equals(ownerAddr)) ? DataUtils.convertAmountToWei("0.1") : Wei.fromEth(9));
+            executor.getExecutor().worldUpdater(world.updater()).commitWorldState();
         }
 
         // client 1 is blacklisted by default

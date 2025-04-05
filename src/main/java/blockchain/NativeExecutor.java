@@ -1,6 +1,7 @@
 package main.java.blockchain;
 
 import lombok.Getter;
+import main.java.utils.DataUtils;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.MutableAccount;
@@ -24,8 +25,9 @@ public class NativeExecutor {
     public TransactionResponse balanceOf(Address address) {
         MutableAccount account = world.getAccount(address);
         boolean status = (account != null);
-        TransactionResponse result = new TransactionResponse(status, ReturnType.WEI);
+        TransactionResponse result = new TransactionResponse(status, ReturnType.STRING);
         result.setDescription((status) ? "Transaction performed successfully." : "Account not found for" + address);
+        if (status) result.setResult(DataUtils.convertAmountToBigDecimalString(account.getBalance()));
         return result;
     }
 
@@ -50,10 +52,18 @@ public class NativeExecutor {
 
         accountFrom.decrementBalance(amount);
         accountTo.incrementBalance(amount);
+        this.world.updater().commit();
 
         TransactionResponse result = new TransactionResponse(true, ReturnType.BOOL);
         result.setDescription("Transaction performed successfully");
+        result.setResult(true);
         return result;
+    }
+
+    public void initialAmount(Address address, Wei amount) {
+        MutableAccount account = world.getAccount(address);
+        account.setBalance(amount);
+        this.world.updater().commit();
     }
 
     public TransactionResponse performTransaction(Transaction transaction) {
