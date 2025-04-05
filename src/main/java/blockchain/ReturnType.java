@@ -5,5 +5,4 @@ public enum ReturnType {
     UINT8,
     BOOL,
     STRING,
-    WEI,
 }
