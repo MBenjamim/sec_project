@@ -12,8 +12,8 @@ TMP_DIR="/tmp"
 # shellcheck disable=SC1090
 source $CONFIG_FILE
 
-bash $TEST_DIR/check_config_and_compile_test${TN}.sh > /dev/null 2>&1
-bash $TEST_DIR/generate_keys_test${TN}.sh > /dev/null 2>&1
+bash ./tests_sh/check_config_and_compile_tests.sh $TN > /dev/null 2>&1
+bash ./tests_sh/generate_keys_tests.sh $TN > /dev/null 2>&1
 
 LOG_LEVEL="info"
 if [[ "$1" == "-DEBUG" ]]; then
@@ -58,7 +58,7 @@ cleanup() {
         rm -f "$TMP_DIR/blockchain_client_fifo_$i"
     done
 
-    bash $TEST_DIR/cleanup_test${TN}.sh > /dev/null 2>&1
+    bash ./tests_sh/cleanup_tests.sh $TN > /dev/null 2>&1
 }
 trap cleanup EXIT
 
