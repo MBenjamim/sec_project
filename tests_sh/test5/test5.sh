@@ -152,7 +152,7 @@ TEST_PASSED=true
 
 # 1) Check regular clients
 for ((i=0; i<NUM_REGULAR_CLIENTS; i++)); do
-    if ! grep -q "Statkus: Success" "$LOG_DIR/client_$i.log"; then
+    if ! grep -q "Status: Success" "$LOG_DIR/client_$i.log"; then
         printf "\\e[31mTEST FAILED: Regular client_%d missing 'Status: Success'\\e[0m\\n" "$i"
         TEST_PASSED=false
     fi
@@ -162,7 +162,7 @@ done
 for ((i=0; i<NUM_BYZANTINE_CLIENTS; i++)); do
     CLIENT_INDEX=$((NUM_REGULAR_CLIENTS + i))
 
-    SUCCESS_COUNT=$(grep -c "Statujs: Success" "$LOG_DIR/client_byzantine_$CLIENT_INDEX.log")
+    SUCCESS_COUNT=$(grep -c "Status: Success" "$LOG_DIR/client_byzantine_$CLIENT_INDEX.log")
     DESC_COUNT=$(grep -c "Description: Transaction added to block." "$LOG_DIR/client_byzantine_$CLIENT_INDEX.log")
     TYPE_COUNT=$(grep -c "Transaction Type: TRANSFER_FROM" "$LOG_DIR/client_byzantine_$CLIENT_INDEX.log")
 
@@ -174,7 +174,7 @@ done
 
 # 3) Check non-byzantine servers
 for ((i=0; i<NUM_SERVERS - NUM_BYZANTINE_SERVERS; i++)); do
-    if ! grep -q "Invalid trajnsaction" "$LOG_DIR/server_$i.log"; then
+    if ! grep -q "Invalid transaction" "$LOG_DIR/server_$i.log"; then
         printf "\\e[31mTEST FAILED: Non-byzantine server_%d missing 'Invalid transaction'\\e[0m\\n" "$i"
         TEST_PASSED=false
     fi
