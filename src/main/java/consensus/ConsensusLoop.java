@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import main.java.blockchain.Blockchain;
+import main.java.blockchain.Transaction;
 import main.java.common.Message;
 import main.java.common.MessageType;
 import main.java.common.NodeRegistry;
@@ -19,10 +21,16 @@ import org.slf4j.LoggerFactory;
 public class ConsensusLoop implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ConsensusLoop.class);
 
+    private static final String genesisBlockPath = "genesis_block.json";
+
+    // limit of transactions to be ordered during consensus and to be executed in a single block
+    private static final int MAX_TRANSACTIONS_PER_BLOCK = 10;
+
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
-    private final List<Block> requests = new ArrayList<>();
-    private final Map<Long, Block> blockchain = new HashMap<>();
+    private final List<Transaction> requests = new ArrayList<>();
     private final BlockchainNetworkServer server;
+    private final Blockchain blockchain;
+    private final Thread blockchainThread;
 
     //tests
     private final Behavior behavior;
@@ -32,16 +40,19 @@ public class ConsensusLoop implements Runnable {
     private boolean inConsensus;
 
     public ConsensusLoop(BlockchainNetworkServer server, Behavior behavior) {
-        this.currIndex = 0;
+        this.currIndex = 1; // keep it the same as block indexes for simplicity
         this.inConsensus = false;
         this.server = server;
         this.behavior = behavior;
         this.N = server.getNetworkNodes().size();
+        this.blockchain = new Blockchain(server, genesisBlockPath);
+        this.blockchainThread = new Thread(blockchain);
     }
 
     @Override
     public void run() {
         logger.info("Consensus loop started");
+        blockchainThread.start();
         while (true) {
             this.doWork();
         }
@@ -62,16 +73,17 @@ public class ConsensusLoop implements Runnable {
         State state = consensus.checkLeaderAndGetState(epochTS, leaderId);
 
         if (state != null) {
-            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
-                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
-                Block curruptedBlock = new Block("Corrupted", 0);
-                state.setValue(curruptedBlock);
-            }
+            // FIXME - byzantine behavior
+//            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
+//                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
+//                Block curruptedBlock = new Block("Corrupted", 0);
+//                state.setValue(curruptedBlock);
+//            }
             try {
-                server.getKeyManager().signState(state, server.getId(), consensusIndex, epochTS);
+                String messageContent = server.getKeyManager().signState(state, server.getId(), consensusIndex, epochTS);
                 Message response =
                         new Message(server.generateMessageId(), MessageType.STATE, server.getId(),
-                                state.toJson(), consensusIndex, epochTS);
+                                messageContent, consensusIndex, epochTS);
                 server.sendConsensusResponse(response, leaderId);
             } catch (Exception e) {
                 logger.error("Failed to sign state in response to read message from leaderId: {}", leaderId, e);
@@ -140,11 +152,11 @@ public class ConsensusLoop implements Runnable {
 
         logger.debug("Verified all signatures and have enough STATE messages: {}", collectedStates.size());
 
-        Block toWrite = consensus.determineValueToWrite(epochTS, validStates, leaderState, server.getNetworkClients().size());
-        if (toWrite == null) {
+        String transactions = consensus.determineValueToWrite(epochTS, validStates, leaderState, server.getKeyManager(), blockchain);
+        if (transactions == null) {
             logger.error("ABORTED: consensus instance={}; consensus epoch={}; by message:\n{}", consensusIndex, epochTS, message); // FIXME: abort
         } else {
-            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.WRITE, toWrite.toJson());
+            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.WRITE, transactions);
         }
     }
 
@@ -159,9 +171,9 @@ public class ConsensusLoop implements Runnable {
         int epochTS = message.getEpochTS();
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        Block value = consensus.collectWriteAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
-        if (value != null) {
-            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.ACCEPT, value.toJson());
+        String transactions = consensus.collectWriteAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
+        if (transactions != null) {
+            server.broadcastConsensusResponse(consensusIndex, epochTS, MessageType.ACCEPT, transactions);
         }
     }
 
@@ -176,22 +188,18 @@ public class ConsensusLoop implements Runnable {
         int epochTS = message.getEpochTS();
 
         Consensus consensus = getConsensusInstance(consensusIndex);
-        Block value = consensus.collectAcceptAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
-        if (value != null) {
-            decide(consensusIndex, value);
+        List<Transaction> transactions = consensus.collectAcceptAndGetIfEnough(epochTS, message.getSender(), message.getContent(), server.getId());
+        if (transactions != null) {
+            decide(consensusIndex, transactions);
             logger.info("DECIDED: consensus instance={}; consensus epoch={}; by message:\n{}", consensusIndex, epochTS, message);
         }
     }
 
-    synchronized public void decide(long consensusIndex, Block block) {
-        if (blockchain.putIfAbsent(consensusIndex, block) != null) return;
-        requests.remove(block); // only removes first match
-        inConsensus = false;
+    synchronized public void decide(long consensusIndex, List<Transaction> transactions) {
+        if (!blockchain.addTransactionsForBlock(consensusIndex, transactions)) return; //returns if the block already exists
+        transactions.forEach(requests::remove);
         currIndex++;
-        Message response =
-                new Message(server.generateMessageId(), MessageType.DECISION, server.getId(),
-                        block.getValue(), consensusIndex, -1);
-        server.sendReplyToClient(response, block.getClientId());
+        inConsensus = false;
         wakeup();
     }
 
@@ -213,7 +221,9 @@ public class ConsensusLoop implements Runnable {
 
         // Propose
         Consensus consensus = getConsensusInstance(currIndex);
-        int epochTS = consensus.proposeToEpoch(requests.get(0));
+        List<Transaction> transactions = requests.stream().limit(MAX_TRANSACTIONS_PER_BLOCK).toList();
+        Integer epochTS = consensus.proposeToEpoch(transactions);
+        if (epochTS == null) return;
         inConsensus = true;
         server.broadcastConsensusResponse(currIndex, epochTS, MessageType.READ, "");
     }
@@ -221,7 +231,10 @@ public class ConsensusLoop implements Runnable {
     /**
      * Check if this process is in a consensus instance,
      * or has no client requests to be processed,
-     * or is not the leader for the current epoch of consensus instance
+     * or is not the leader for the current epoch of consensus instance.
+     *
+     * FIXME - this condition simulates the average time to complete a consensus,
+     *  since blockchains like Ethereum use a fixed time to let consensus complete
      *
      * @return true if conditions are met
      */
@@ -257,8 +270,11 @@ public class ConsensusLoop implements Runnable {
      */
     synchronized public void addRequest(Message requestMessage) {
         if (requestMessage.getContent().isBlank()) return;
-        requests.add(new Block(requestMessage.getContent(), requestMessage.getSender()));
+        Transaction transaction = Transaction.fromJson(requestMessage.getContent());
+        if (transaction == null || requests.contains(transaction) ||
+                !transaction.isValid(blockchain, server.getKeyManager())) return;
+
+        requests.add(transaction);
         wakeup();
     }
-
 }

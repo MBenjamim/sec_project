@@ -41,3 +41,6 @@ for ((i=0; i<NUM_CLIENTS; i++)); do
 done
 
 echo "All keys have been generated and distributed successfully!"
+
+# Generate genesis block as file .json
+mvn exec:java -Dexec.mainClass=main.java.blockchain.GenesisBlockGenerator -Dexec.args="$NUM_CLIENTS" -DLOG_LEVEL=$LOG_LEVEL

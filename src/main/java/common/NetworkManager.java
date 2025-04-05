@@ -18,7 +18,6 @@ public class NetworkManager {
 
     private final int id;
     private long sentMessages = 0;
-    private final int timeout;
     private final KeyManager keyManager;
 
     /**
@@ -27,10 +26,9 @@ public class NetworkManager {
      * @param id         the unique identifier for the server
      * @param keyManager for authenticated communication
      */
-    public NetworkManager(int id, KeyManager keyManager, int timeout) {
+    public NetworkManager(int id, KeyManager keyManager) {
         this.id = id;
         this.keyManager = keyManager;
-        this.timeout = timeout;
     }
 
     /**
@@ -120,7 +118,7 @@ public class NetworkManager {
     public void sendMessageThread(Message message, NodeRegistry node) {
         new Thread(() -> {
             logger.debug("Sending message: {id:{}, content:\"{}\", type:{}, receiver:{}{}}", message.getId(), message.getContent(), message.getType(), node.getType(), node.getId());
-            ReliableLink.sendMessage(message, node, keyManager, timeout);
+            ReliableLink.sendMessage(message, node, keyManager);
         }).start();
     }
 

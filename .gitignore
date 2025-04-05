@@ -3,6 +3,10 @@ server*/
 client*/
 public_keys/
 
+# Ignore generated blocks
+genesis_block.json
+server*_block*.json
+
 # Allow the specific 'server/' and 'client/' directories
 !server/
 !client/

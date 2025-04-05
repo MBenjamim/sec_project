@@ -1,5 +1,6 @@
 package main.java.crypto_utils;
 
+import main.java.utils.DataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,24 @@ public class RSAAuthenticator {
         verifier.update(DataUtils.longToBytes(consensusIdx));
         verifier.update(DataUtils.intToBytes(epochTS));
         verifier.update(state);
+
+        return verifier.verify(signature);
+    }
+
+    public static byte[] signTransaction(PrivateKey privateKey, byte[] transaction) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature signature = Signature.getInstance(ALGORITHM);
+        signature.initSign(privateKey);
+
+        signature.update(transaction);
+
+        return signature.sign();
+    }
+
+    public static boolean verifyTransaction(PublicKey publicKey, byte[] transaction, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature verifier = Signature.getInstance(ALGORITHM);
+        verifier.initVerify(publicKey);
+
+        verifier.update(transaction);
 
         return verifier.verify(signature);
     }

@@ -1,5 +1,6 @@
 package main.java.crypto_utils;
 
+import main.java.utils.DataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +49,11 @@ public class AESKeyGenerator {
     }
 
     public static SecretKey generateKey() throws NoSuchAlgorithmException {
-        logger.info("Generating " + ALGORITHM + " key ..." );
+        logger.debug("Generating " + ALGORITHM + " key ..." );
         KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
         keyGen.init(KEY_SIZE);
         SecretKey key = keyGen.generateKey();
-        logger.info("Finish generating " + ALGORITHM + " key.");
+        logger.debug("Finish generating " + ALGORITHM + " key.");
         return key;
     }
 

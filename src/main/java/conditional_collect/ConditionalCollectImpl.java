@@ -46,15 +46,9 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     synchronized public String collectValues(int myId) {
         if (collected) return null;
         if (states.size() >= N - F && states.get(myId) != null) {
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                String jsonString = objectMapper.writeValueAsString(states);
-                this.states = new HashMap<>();
-                return jsonString;
-            } catch (Exception e) {
-                logger.error("Failed to convert JSON to collected messages map", e);
-                return null;
-            }
+            String collectedStates = collectionOfStatesToJson(states);
+            this.states = new HashMap<>();
+            return collectedStates;
         }
         return null;
     }
@@ -67,5 +61,15 @@ public class ConditionalCollectImpl implements ConditionalCollect {
     @Override
     synchronized public void markAsCollected() {
         collected = true;
+    }
+
+    private static String collectionOfStatesToJson(Map<Integer, State> states) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writeValueAsString(states);
+        } catch (Exception e) {
+            logger.error("Failed to convert collected messages map to JSON", e);
+            return null;
+        }
     }
 }
