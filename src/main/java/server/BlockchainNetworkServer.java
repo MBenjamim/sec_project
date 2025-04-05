@@ -31,7 +31,6 @@ public class BlockchainNetworkServer {
     private final int id;
     private int serverPort;
     private int clientPort;
-    private int timeout;
 
     //tests
     private final Behavior behavior;
@@ -86,7 +85,7 @@ public class BlockchainNetworkServer {
         server.loadConfig(configFile);
         server.consensusLoop = new ConsensusLoop(server, behavior);
         server.consensusThread = new Thread(server.consensusLoop);
-        server.networkManager = new NetworkManager(server.id, server.keyManager, server.timeout);
+        server.networkManager = new NetworkManager(server.id, server.keyManager);
         server.start();
     }
 
@@ -114,7 +113,6 @@ public class BlockchainNetworkServer {
 
         this.serverPort = config.getIntProperty("BASE_PORT_SERVER_TO_SERVER") + id;
         this.clientPort = config.getIntProperty("BASE_PORT_CLIENT_TO_SERVER") + id;
-        this.timeout = config.getIntProperty("TIMEOUT");
         ConsensusEpoch.setLeaderId(config.getIntProperty("LEADER_ID"));
 
         for (int i = 0; i < numServers; i++) {

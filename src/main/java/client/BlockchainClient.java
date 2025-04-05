@@ -31,7 +31,6 @@ public class BlockchainClient {
 
     private final int id;
     private int port;
-    private int timeout;
 
     private final KeyManager keyManager;
     private NetworkManager networkManager;
@@ -65,7 +64,7 @@ public class BlockchainClient {
 
         BlockchainClient client = new BlockchainClient(clientId);
         client.loadConfig(configFile);
-        client.networkManager = new NetworkManager(client.id, client.keyManager, client.timeout);
+        client.networkManager = new NetworkManager(client.id, client.keyManager);
         client.collector = new BlockchainConfirmationCollector(client.networkNodes.size());
         client.start();
     }
@@ -745,7 +744,6 @@ public class BlockchainClient {
         int basePortClients = config.getIntProperty("BASE_PORT_CLIENTS");
 
         this.port = config.getIntProperty("BASE_PORT_CLIENTS") + id;
-        this.timeout = config.getIntProperty("TIMEOUT");
 
         for (int i = 0; i < numServers; i++) {
             int port = basePort + i;

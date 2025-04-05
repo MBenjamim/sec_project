@@ -104,7 +104,7 @@ public class ReturnDataParser {
     public static String extractStringFromErrorMessage(ByteArrayOutputStream byteArrayOutputStream) {
         JsonObject instruction = jsonFromTracer(byteArrayOutputStream);
         try {
-            String errorMessage = instruction.get("error").getAsString().substring(4 * 2); // ignore first 4 bytes
+            String errorMessage = instruction.get("error").getAsString().substring(2 + 4 * 2); // ignore first 4 bytes
             return getStringFromABI(errorMessage);
         } catch (Exception e) {
             logger.error("Failed to extract error message from: {}", instruction);

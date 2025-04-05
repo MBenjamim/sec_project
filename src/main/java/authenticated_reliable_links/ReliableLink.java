@@ -79,9 +79,8 @@ public class ReliableLink {
      * @param message the message to send
      * @param node    the node to send the message to
      * @param km      required KeyManager to sign the message
-     * @param timeout number of tries to send the message
      */
-    public static void sendMessage(Message message, NodeRegistry node, KeyManager km, int timeout) {
+    public static void sendMessage(Message message, NodeRegistry node, KeyManager km) {
         int relay = 0;
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());
@@ -100,11 +99,6 @@ public class ReliableLink {
             node.addSentMessage(message.getId(), message);
 
             do {
-                if (relay > timeout) {
-                    //logger.error("Timed out waiting for ack for message to {}:{}", node.getIp(), node.getPort());
-                    //return;
-                }
-
                 udpSocket.send(packet);
                 logger.debug("Sent {} message to {}:{}\nMessage: {}", message.getType(), node.getIp(), node.getPort(), message);
 

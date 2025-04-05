@@ -28,21 +28,21 @@ while the second stage will target the transaction processing layer.
 The configuration for the number of servers and the base port is specified in the `config.cfg` file:
 
 ```properties
-# for having a faulty process this must be at least 4 (F < N/3)
-NUM_SERVERS=4
+# Must be at least 4 for fault tolerance, F < N/3
+NUM_SERVERS=7
 
-NUM_CLIENTS=3
+NUM_CLIENTS=5
 
+# Base port where servers listen for communications from other servers
 BASE_PORT_SERVER_TO_SERVER=5000
 
+# Base port where servers listen for communications from clients
 BASE_PORT_CLIENT_TO_SERVER=3000
 
+# Base port where clients listen for communications from servers
 BASE_PORT_CLIENTS=4000
 
 LEADER_ID=0
-
-# number of relays (1 relay = 200ms) total timeout = 3s
-TIMEOUT=5
 ```
 
 ## Running the Project
