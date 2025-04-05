@@ -33,7 +33,8 @@ public class Consensus {
     private int currTS;
 
     //tests
-    private final Behavior behavior;
+    private Behavior behavior;
+    private static final long startTime = System.currentTimeMillis();
 
     /**
      * Constructor to initialize the Consensus with the total number of processes and leader identifier.
@@ -182,6 +183,17 @@ public class Consensus {
             String transactions = determineValueFromState(state, collectedStates, leaderState);
 
             if (transactions != null) {
+                if (this.behavior == Behavior.BEGIN_WRONG_WRITE_AFTER_40_seconds) {
+                    long currentTime = System.currentTimeMillis();
+                    long timeStillToWait = startTime + 40000 - currentTime;
+                    if (timeStillToWait > 0) {
+                        logger.info("FIRST {}\tCURRENT {}", startTime/1000, currentTime/1000);
+                        logger.info("\nI will become byzantine in {} seconds\n", timeStillToWait / 1000);
+                    } else {
+                        this.behavior = Behavior.WRONG_WRITE;
+                        logger.info("\nNow, I am byzantine and I will send wrong write sets\n");
+                    }
+                }
                 if (this.behavior == Behavior.WRONG_WRITE) {
                     logger.info("\nI am byzantine and I will send a wrong write set\n");
                     transactions = transactions + "WRONG";

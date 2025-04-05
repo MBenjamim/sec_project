@@ -12,11 +12,14 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+import main.java.utils.Behavior;
 import main.java.utils.DataUtils;
 import org.apache.commons.cli.*;
 import org.hyperledger.besu.datatypes.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.lang.System.exit;
 
 /**
  * Represents a client in the blockchain network.
@@ -32,6 +35,9 @@ public class BlockchainClient {
     private final int id;
     private int port;
 
+    //tests
+    private final Behavior behavior;
+
     private final KeyManager keyManager;
     private NetworkManager networkManager;
     private BlockchainConfirmationCollector collector;
@@ -41,9 +47,10 @@ public class BlockchainClient {
      *
      * @param clientId the unique identifier for the client
      */
-    public BlockchainClient(int clientId) {
+    public BlockchainClient(int clientId, Behavior behavior) {
         this.id = clientId;
         this.keyManager = new KeyManager(id, "client");
+        this.behavior = behavior;
     }
 
     /**
@@ -52,17 +59,30 @@ public class BlockchainClient {
      * @param args command line arguments (serverId and serverPort)
      */
     public static void main(String[] args) {
-        if (args.length != 2) {
-            logger.error("Usage: java BlockchainClient <clientId> <configFile>");
+        if (args.length > 3 || args.length < 2) {
+            logger.error("Usage: java BlockchainClient <clientId> <configFile> optional: <behavior>");
             System.exit(1);
         }
 
         int clientId = Integer.parseInt(args[0]);
         String configFile = args[1];
+        Behavior behavior = Behavior.CORRECT; // default behavior
+
+        if (args.length == 3) {
+            String behaviorStr = args[2];
+            logger.debug("Behavior: {}", behaviorStr);
+
+            try {
+                behavior = Behavior.valueOf(behaviorStr);
+            } catch (Exception e) {
+                logger.error("Invalid behavior: {}", behaviorStr);
+                exit(1);
+            }
+        }
 
         ConfigLoader.getProcessId();
 
-        BlockchainClient client = new BlockchainClient(clientId);
+        BlockchainClient client = new BlockchainClient(clientId, behavior);
         client.loadConfig(configFile);
         client.networkManager = new NetworkManager(client.id, client.keyManager);
         client.collector = new BlockchainConfirmationCollector(client.networkNodes.size());
@@ -151,6 +171,13 @@ public class BlockchainClient {
                 String messageContent = transaction.toJson();
                 logger.debug("Sending TRANSFER_FROM transaction: \n {}", messageContent);
                 networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(transaction.getTransactionId(), MessageType.CLIENT_WRITE, id, messageContent), node));
+
+                if (this.behavior == Behavior.REPLAY_ATTACK) {
+                    // Simulate a replay attack by sending the same transaction again
+                    long messageId = networkManager.generateMessageId();
+                    networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(messageId, MessageType.CLIENT_WRITE, id, messageContent), node));
+                }
+
                 TransactionResponse transactionResponse = collector.waitForConfirmation();
                 printTransactionResponse(transactionResponse);
             } catch (ParseException | IllegalArgumentException e) {

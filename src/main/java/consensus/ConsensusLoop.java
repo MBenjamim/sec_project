@@ -269,8 +269,10 @@ public class ConsensusLoop implements Runnable {
     synchronized public void addRequest(Message requestMessage) {
         if (requestMessage.getContent().isBlank()) return;
         Transaction transaction = Transaction.fromJson(requestMessage.getContent());
-        if (transaction == null || requests.contains(transaction) ||
-                !transaction.isValid(blockchain, server.getKeyManager())) return;
+        if (transaction == null || requests.contains(transaction) || !transaction.isValid(blockchain, server.getKeyManager())) {
+            logger.info("Invalid transaction: {}", requestMessage.getContent());
+            return;
+        }
 
         requests.add(transaction);
         wakeup();
