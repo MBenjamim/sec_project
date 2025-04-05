@@ -182,13 +182,10 @@ public class Consensus {
             String transactions = determineValueFromState(state, collectedStates, leaderState);
 
             if (transactions != null) {
-                // FIXME - byzantine behavior
-//                if (this.behavior == Behavior.WRONG_WRITE) {
-//                    logger.info("\nI am byzantine and I will write a wrong block\n");
-//                    String originalValue = block.getValue();
-//                    String newValue = originalValue + "WRONG";
-//                    block.setValue(newValue);
-//                }
+                if (this.behavior == Behavior.WRONG_WRITE) {
+                    logger.info("\nI am byzantine and I will send a wrong write set\n");
+                    transactions = transactions + "WRONG";
+                }
                 updateStateAndEpochTS(epochTS, transactions, false);
                 return transactions;
             }

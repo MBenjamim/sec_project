@@ -73,12 +73,10 @@ public class ConsensusLoop implements Runnable {
         State state = consensus.checkLeaderAndGetState(epochTS, leaderId);
 
         if (state != null) {
-            // FIXME - byzantine behavior
-//            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
-//                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
-//                Block curruptedBlock = new Block("Corrupted", 0);
-//                state.setValue(curruptedBlock);
-//            }
+            if (this.behavior == Behavior.WRONG_READ_RESPONSE) {
+                logger.debug("\n\nI am Byzantine and I will corrupt the STATE messages\n");
+                state.setValue("corrupted");
+            }
             try {
                 String messageContent = server.getKeyManager().signState(state, server.getId(), consensusIndex, epochTS);
                 Message response =

@@ -101,7 +101,7 @@ sleep 5
 
 # Send input to the client process through the named pipe
 for ((i=0; i<NUM_CLIENTS; i++)); do
-    echo "value_to_append_$i" > "$TMP_DIR/blockchain_client_fifo_$i"
+    echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
 done
 
 # Wait for the system to process the input
@@ -111,7 +111,7 @@ sleep "$SLEEP_TIME"
 # Check the log files for the expected log entry
 ALL_PASSED=true
 for ((i=0; i<NUM_CLIENTS; i++)); do
-    if ! grep -q "Value 'value_to_append_$i' appended to the blockchain with timestamp" $LOG_DIR/client_$i.log; then
+    if ! grep -q "Status: Success" $LOG_DIR/client_$i.log; then
         printf "\e[31m[FAILED] TEST%d: Expected log entry not found in client_%d.log.\e[0m\n" "$TN" "$i"
         ALL_PASSED=false
     fi
