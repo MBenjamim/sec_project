@@ -19,6 +19,7 @@ public class Blockchain implements Runnable {
 
     private final BlockchainNetworkServer server;
     private SmartContractExecutor executor;
+    private NativeExecutor nativeExecutor;
     private SimpleWorld world;
     private final Map<Address, NodeRegistry> clients = new HashMap<>();
     private final Map<Long, String> blocks = new HashMap<>();
@@ -30,7 +31,7 @@ public class Blockchain implements Runnable {
     /**
      * Creates the blockchain, initializing every account from genesis block file.
      *
-     * @param clientNodes        the node registries to associate blockchain address of EOAs to their public keys
+     * @param server             to associate blockchain address of EOAs to their public keys
      * @param pathToGenesisBlock the path to the genesis block file
      */
     public Blockchain(BlockchainNetworkServer server, String pathToGenesisBlock) {
@@ -48,6 +49,7 @@ public class Blockchain implements Runnable {
         }
         this.world = genesisBlock.getWorld();
         this.executor = new SmartContractExecutor(world, genesisBlock.getBlacklistAddress(), genesisBlock.getTokenAddress());
+        this.nativeExecutor = new NativeExecutor(world);
         blocks.put(currentBlock, genesisBlock.toJson());
         currentBlock++;
         this.previousBlockHash = genesisBlock.getBlockHash();
@@ -78,11 +80,11 @@ public class Blockchain implements Runnable {
             }
         }
 
-
         // Execute transactions
         logger.debug("Executing transactions for block {}", currentBlock);
         List<Transaction> transactions = pendingTransactions.get(currentBlock);
         List<TransactionResponse> responses = new ArrayList<>();
+        int transactionCount = transactions.size();
         for (Transaction transaction : transactions) {
             TransactionResponse response = executeTransaction(transaction);
             response.setClientAddress(transaction.getSenderAddress());
@@ -105,7 +107,7 @@ public class Blockchain implements Runnable {
         removeTransactionsForBlock(currentBlock);
         previousBlockHash = newBlock.getBlockHash();
         currentBlock++;
-        logger.info("APPENDED NEW BLOCK: {} with hash {}", currentBlock, newBlock.getBlockHash());
+        logger.info("APPENDED NEW BLOCK: {} with hash {}, {} transactions were executed", currentBlock, newBlock.getBlockHash(), transactionCount);
     }
 
     /**
@@ -169,9 +171,15 @@ public class Blockchain implements Runnable {
 
     synchronized public TransactionResponse executeTransaction(Transaction transaction) {
         logger.debug("Executing transaction {}", transaction.getTransactionId());
-        TransactionResponse transactionResponse = executor.execute(transaction);
+        TransactionResponse transactionResponse;
+        if (transaction.getFunctionSignature() == null) {
+            transactionResponse = nativeExecutor.performTransaction(transaction);
+            // FIXME - may need to updated / commit world state
+        } else {
+            transactionResponse = executor.execute(transaction);
+        }
         if (transactionResponse.isStatus()) {
-            logger.info("Transaction {} executed successfully", transaction.getSignatureBase64());
+            logger.info("Transaction {} executed successfully", transaction.getTransactionId());
         } else {
             logger.info("Transaction {} failed: {}", transaction.getTransactionId(), transactionResponse.getDescription());
         }

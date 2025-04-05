@@ -1,9 +1,12 @@
 package main.java.utils;
 
+import org.hyperledger.besu.datatypes.Wei;
 import org.web3j.crypto.Hash;
 import org.web3j.utils.Numeric;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 
 /**
@@ -14,6 +17,9 @@ public final class DataUtils {
 
     // ISTCoin defined decimals
     private static final int DECIMALS = 2;
+
+    private static final int WEI_EXPONENT = 18;
+    private static final BigDecimal ONE_WEI = new BigDecimal(BigInteger.TEN.pow(WEI_EXPONENT));
 
     /**
      * Converts a byte array to a hexadecimal string.
@@ -123,5 +129,17 @@ public final class DataUtils {
         long amount = Long.parseLong(amountObject.toString());
         long decimals = BigInteger.TEN.pow(DECIMALS).longValue();
         return (double) amount / decimals;
+    }
+
+    public static String convertAmountToBigDecimalString(Wei amount) {
+        BigDecimal bigDecimal = new BigDecimal(amount.getAsBigInteger());
+        return bigDecimal.divide(ONE_WEI, WEI_EXPONENT, RoundingMode.FLOOR).stripTrailingZeros().toPlainString();
+    }
+
+    public static Wei convertAmountToWei(String amount) {
+        BigDecimal bigDecimal = new BigDecimal(amount);
+        BigDecimal weiValue = bigDecimal.multiply(ONE_WEI);
+        BigInteger bigInteger = weiValue.setScale(0, RoundingMode.FLOOR).toBigInteger();
+        return Wei.of(bigInteger);
     }
 }

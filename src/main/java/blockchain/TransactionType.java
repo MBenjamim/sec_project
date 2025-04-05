@@ -20,4 +20,8 @@ public enum TransactionType {
     TOTAL_SUPPLY,
     TRANSFER,
     TRANSFER_FROM,
+
+    // Native currency functions
+    NATIVE_BALANCE,
+    NATIVE_TRANSFER,
 }
