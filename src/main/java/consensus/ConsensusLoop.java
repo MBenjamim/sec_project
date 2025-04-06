@@ -25,6 +25,8 @@ public class ConsensusLoop implements Runnable {
 
     // limit of transactions to be ordered during consensus and to be executed in a single block
     private static final int MAX_TRANSACTIONS_PER_BLOCK = 10;
+    // wait after consensus to allow more effective batching
+    private static final int BATCHING_DELAY = 1000;
 
     private final Map<Long, Consensus> consensusInstances = new HashMap<>();
     private final List<Transaction> requests = new ArrayList<>();
@@ -55,6 +57,9 @@ public class ConsensusLoop implements Runnable {
         blockchainThread.start();
         while (true) {
             this.doWork();
+            try {
+                Thread.sleep(BATCHING_DELAY);
+            } catch (InterruptedException e) {}
         }
     }
 
