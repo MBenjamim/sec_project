@@ -72,7 +72,6 @@ This script will start the first server in a new Tmux session and additional ser
 
 ```shell
 ./run_clients.sh
-#write the string to put in the blockchain
 ```
 
 ### Manual Run
