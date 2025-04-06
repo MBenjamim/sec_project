@@ -269,11 +269,14 @@ public class ConsensusLoop implements Runnable {
     synchronized public void addRequest(Message requestMessage) {
         if (requestMessage.getContent().isBlank()) return;
         Transaction transaction = Transaction.fromJson(requestMessage.getContent());
-        if (transaction == null || requests.contains(transaction) || !transaction.isValid(blockchain, server.getKeyManager())) {
-            logger.info("Invalid transaction: {}", requestMessage.getContent());
-            return;
+        if (this.behavior != Behavior.DONT_VERIFY_TRANSACTIONS) {
+            if (transaction == null || requests.contains(transaction) || !transaction.isValid(blockchain, server.getKeyManager())) {
+                logger.info("Invalid transaction: {}", requestMessage.getContent());
+                return;
+            }
+        } else {
+            logger.info("\n\nI am byzantine and I will not verify the transactions\n");
         }
-
         requests.add(transaction);
         wakeup();
     }

@@ -174,6 +174,7 @@ public class BlockchainClient {
 
                 if (this.behavior == Behavior.REPLAY_ATTACK) {
                     // Simulate a replay attack by sending the same transaction again
+                    logger.info("I am byzantine and I will send the same transaction again");
                     long messageId = networkManager.generateMessageId();
                     networkNodes.values().forEach(node -> networkManager.sendMessageThread(new Message(messageId, MessageType.CLIENT_WRITE, id, messageContent), node));
                 }
