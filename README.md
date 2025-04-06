@@ -82,10 +82,10 @@ This script will start the first server in a new Tmux session and additional ser
 ./check_config_and_compile.sh
 ```
 
-2. **Generate RSA Keys**\
-   Run the `generate_keys.sh` script to generate RSA key pairs for each server and distribute the public keys:
+2. **Initialize System**\
+   Run the `init_system.sh` script to generate RSA key pairs for each server and distribute the public keys, and initialize the Genesis block containing block zero:
 ```shell
-./generate_keys.sh
+./init_system.sh
 ```
 
 3. **Run Each Server**\
