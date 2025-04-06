@@ -62,12 +62,16 @@ public class ReliableLink {
      */
     public static boolean verifyMessage(Message message, NodeRegistry sender, int recvId, KeyManager km) {
         try {
+            if (sender != null && message.getType() != MessageType.CONNECT && sender.getRecvSessionKey() == null) {
+                logger.error("Session key was not received yet for {}{}, ignoring...", sender.getType(), sender.getId());
+                return false;
+            }
             if (sender == null || !km.verifyMessage(message, sender, recvId)) {
                 logger.error("Invalid message: {}", message);
                 return false;
             }
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            logger.error("Failed to verify message", e);
+            logger.error("Failed to verify message with id: {}; from {}{}", message.getId(), sender.getType(), sender.getId(), e);
             return false;
         }
         return true;
@@ -85,6 +89,10 @@ public class ReliableLink {
         try (DatagramSocket udpSocket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName(node.getIp());
             byte[] messageBytes = km.authenticateMessage(message, node);
+            if (messageBytes == null) {
+                logger.error("Not sent given that session did not start: {} message to {}:{}", message.getType(), node.getIp(), node.getPort());
+                return;
+            }
 
             DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, node.getPort());
 

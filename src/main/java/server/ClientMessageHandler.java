@@ -59,6 +59,7 @@ public class ClientMessageHandler implements MessageHandler {
                 firstTime = sender.addReceivedMessage(message.getId(), message);
                 if (firstTime) networkManager.createTwoWaySession(message, sender);
                 if (sender.getSendSessionKey() != null) { // guarantee that session key is updated
+                    logger.debug("KEY SET FOR COMMUNICATION WITH CLIENT{}", sender.getId());
                     networkManager.acknowledgeMessage(message, sender);
                 }
                 break;

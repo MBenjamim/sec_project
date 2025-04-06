@@ -71,9 +71,6 @@ public class GenesisBlockGenerator {
             executor.getExecutor().worldUpdater(world.updater()).commitWorldState();
         }
 
-        // client 1 is blacklisted by default
-        executor.addToBlacklist(ownerAddr, eoaList.get(1));
-
         Block genesisBlock = new Block(world, blacklistAddr, tokenAddr, null);
 
         // DEBUG

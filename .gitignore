@@ -12,7 +12,7 @@ server*_block*.json
 !client/
 
 #Ignore test generated logs
-tests_sh/test*/logs/
+tests_sh/test*/logs/*
 
 # Compiled Java class files
 *.class

@@ -7,13 +7,13 @@ TEST_DIR="./tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"
 LOG_DIR="$TEST_DIR/logs"
 TMP_DIR="/tmp"
-
+INIT_WAIT=20
 
 # shellcheck disable=SC1090
 source $CONFIG_FILE
 
-bash $TEST_DIR/check_config_and_compile_test${TN}.sh > /dev/null 2>&1
-bash $TEST_DIR/generate_keys_test${TN}.sh > /dev/null 2>&1
+bash ./tests_sh/check_config_and_compile_tests.sh $TN > /dev/null 2>&1
+bash ./tests_sh/generate_keys_tests.sh $TN > /dev/null 2>&1
 
 LOG_LEVEL="info"
 if [[ "$1" == "-DEBUG" ]]; then
@@ -58,7 +58,7 @@ cleanup() {
         rm -f "$TMP_DIR/blockchain_client_fifo_$i"
     done
 
-    bash $TEST_DIR/cleanup_test${TN}.sh > /dev/null 2>&1
+    bash ./tests_sh/cleanup_tests.sh $TN > /dev/null 2>&1
 }
 trap cleanup EXIT
 
@@ -72,7 +72,6 @@ for ((i=0; i<$((NUM_SERVERS-NUM_BYZANTINE)); i++)); do
         echo "Failed to start server $i."
         exit 1
     fi
-    sleep 1
 done
 
 # Start Byzantine servers
@@ -97,11 +96,11 @@ for ((i=0; i<NUM_CLIENTS; i++)); do
     fi
 done
 
-sleep 5
+sleep $INIT_WAIT
 
 # Send input to the client process through the named pipe
 for ((i=0; i<NUM_CLIENTS; i++)); do
-    echo "value_to_append_$i" > "$TMP_DIR/blockchain_client_fifo_$i"
+    echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
 done
 
 # Wait for the system to process the input
@@ -111,7 +110,7 @@ sleep "$SLEEP_TIME"
 # Check the log files for the expected log entry
 ALL_PASSED=true
 for ((i=0; i<NUM_CLIENTS; i++)); do
-    if ! grep -q "Value 'value_to_append_$i' appended to the blockchain with timestamp" $LOG_DIR/client_$i.log; then
+    if ! grep -q "Status: Success" $LOG_DIR/client_$i.log; then
         printf "\e[31m[FAILED] TEST%d: Expected log entry not found in client_%d.log.\e[0m\n" "$TN" "$i"
         ALL_PASSED=false
     fi

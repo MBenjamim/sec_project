@@ -95,7 +95,7 @@ public class Blockchain implements Runnable {
         Block newBlock = new Block(world, executor.getBlacklistAddress(), executor.getTokenAddress(), previousBlockHash);
         newBlock.setTransactions(transactions);
         blocks.put(currentBlock, newBlock.toJson());
-        newBlock.debugToFile("server" + server.getId() + "_block" + currentBlock + ".json"); // DEBUG
+        // newBlock.debugToFile("server" + server.getId() + "_block" + currentBlock + ".json"); // DEBUG
 
         // Respond to clients
         for (TransactionResponse response : responses) {

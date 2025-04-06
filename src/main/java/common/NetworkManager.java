@@ -9,6 +9,8 @@ import main.java.authenticated_reliable_links.ReliableLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.SecretKey;
+
 /**
  * Manages the network communication of a node.
  */
@@ -76,10 +78,11 @@ public class NetworkManager {
 
     public void createTwoWaySession(Message message, NodeRegistry sender) {
         try {
+            SecretKey sessionKey = keyManager.getSessionKey(message);
             if (sender.getRecvSessionKey() == null) {
-                sender.setRecvSessionKey(keyManager.getSessionKey(message));
+                sender.setRecvSessionKey(sessionKey);
             }
-            sender.setSendSessionKey(keyManager.getSessionKey(message));
+            sender.setSendSessionKey(sessionKey);
         } catch (Exception e) {
             logger.error("Error while creating two-way session for node {}{}", sender.getType(), sender.getId(), e);
         }
