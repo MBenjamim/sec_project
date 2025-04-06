@@ -7,9 +7,6 @@ Chain (DepChain). The system will be built iteratively throughout the first and
 second stages of the project: the first stage focuses on the consensus layer 
 while the second stage will target the transaction processing layer.
 
-## Current Stage
-**Consensus Layer (Stage 1)**
-
 ## Participants
 | Name              |   IST Number   |
 |-------------------|----------------|
@@ -109,6 +106,12 @@ mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="0 
 mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="1 config.cfg <behavior>" -DLOG_LEVEL="info"
 ```
 
+5. **Run Client with Byzantine Behavior**\
+    Use the following command to start a byzantine client, change `<behavior>` to one of the predefined behavior types:
+```shell
+mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="1 config.cfg <behavior>" -DLOG_LEVEL="info"
+```
+
 ## Cleanup
 To clean up the generated files and directories, run the `cleanup.sh` script:
 ```shell
@@ -133,6 +136,10 @@ The tests are in the `tests_sh directory`. Here you will find the following test
 - `test3`: Test the functionality of the blockchain network with the maximum faulty processes with Byzantine behavior of sending corrupted `WRITE` consensus messages.
 
 - `test4`: Test the functionality of the blockchain network with the maximum faulty processes with Byzantine behavior of sending corrupted `STATE` consensus messages in response to the leader `READ` message.
+
+- `test5`:  Test the functionality of the blockchain network with the maximum faulty processes with Byzantine behavior that fail to verify transactions when a client authorized to send a limited number of tokens on behalf of another process attempts a replay attack.
+
+- `test6`: Test the blockchain network's functionality with `f+1` faulty processes exhibiting Byzantine behavior by sending corrupted `WRITE` consensus messages after 40 seconds of execution, at which point consensus is expected to stop functioning.
 
 ### Logs
 The logs of the previous run are stored in the `logs` directory. The logs are named:
