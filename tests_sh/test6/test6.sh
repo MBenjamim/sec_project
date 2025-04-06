@@ -7,7 +7,7 @@ TEST_DIR="./tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"
 LOG_DIR="$TEST_DIR/logs"
 TMP_DIR="/tmp"
-
+INIT_WAIT=20
 
 # shellcheck disable=SC1090
 source $CONFIG_FILE
@@ -72,7 +72,6 @@ for ((i=0; i<$((NUM_SERVERS-NUM_BYZANTINE)); i++)); do
         echo "Failed to start server $i."
         exit 1
     fi
-    sleep 1
 done
 
 # Start Byzantine servers
@@ -80,30 +79,25 @@ for ((i=0; i<NUM_BYZANTINE; i++)); do
     SERVER_INDEX=$((NUM_SERVERS-1-i))
     mvn exec:java -Dexec.mainClass=main.java.server.BlockchainNetworkServer -Dexec.args="$SERVER_INDEX $CONFIG_FILE $BEHAVIOR" -DLOG_LEVEL=$LOG_LEVEL &> $LOG_DIR/server_byzantine_$i.log &
     eval SERVER_BYZANTINE_${i}_PID=$!
-    sleep 1
 done
 
 
 
 #RUN CLIENTS
-# Start clients and redirect input from their respective named pipes
-for ((i=0; i<NUM_CLIENTS; i++)); do
-    PIPE_PATH="$TMP_DIR/blockchain_client_fifo_$i"
-    mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="$i $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL < "$PIPE_PATH" &> $LOG_DIR/client_$i.log &
-    eval CLIENT_${i}_PID=$!
-    # shellcheck disable=SC2181
-    if [ $? -ne 0 ]; then
-        echo "Failed to start client $i."
-        exit 1
-    fi
-    sleep
+i=0 # Start client0 and redirect input from its respective named pipe
+PIPE_PATH="$TMP_DIR/blockchain_client_fifo_$i"
+mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="$i $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL < "$PIPE_PATH" &> $LOG_DIR/client_$i.log &
+eval CLIENT_${i}_PID=$!
+# shellcheck disable=SC2181
+if [ $? -ne 0 ]; then
+    echo "Failed to start client $i."
+    exit 1
+fi
 
-sleep 5
+sleep $INIT_WAIT
 
-# Send input to the client process through the named pipe
-for ((i=0; i<NUM_CLIENTS; i++)); do
-    echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
-done
+i=0 # Send input to the client0 process through the named pipe
+echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
 
 # Wait for the system to process the input
 printf "Sleeping for %d seconds to allow the system to process the input...\n" "$SLEEP_TIME"
@@ -111,79 +105,52 @@ sleep "$SLEEP_TIME"
 
 # Check the log files for the expected log entry
 ALL_PASSED=true
-for ((i=0; i<NUM_CLIENTS; i++)); do
-    if ! grep -q "Status: Success" $LOG_DIR/client_$i.log; then
-        printf "\e[31m[FAILED] TEST%d: Expected log entry not found in client_%d.log.\e[0m\n" "$TN" "$i"
-        ALL_PASSED=false
-    fi
-done
+i=0
+if ! grep -q "Status: Success" $LOG_DIR/client_$i.log; then
+    printf "\e[31m[FAILED] TEST%d: Expected log entry not found in client_%d.log.\e[0m\n" "$TN" "$i"
+    ALL_PASSED=false
+fi
 
 if [ "$ALL_PASSED" = true ]; then
-    # Wait for servers to become Byzantine
-    sleep "$SLEEP_TIME"
-
-    # Debugging: Check if the named pipes exist
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        if [ ! -p "$TMP_DIR/blockchain_client_fifo_$i" ]; then
-            echo "Error: FIFO $TMP_DIR/blockchain_client_fifo_$i does not exist."
+    for ((i=1; i<NUM_CLIENTS; i++)); do # Skip client0
+        PIPE_PATH="$TMP_DIR/blockchain_client_fifo_$i"
+        mvn exec:java -Dexec.mainClass=main.java.client.BlockchainClient -Dexec.args="$i $CONFIG_FILE" -DLOG_LEVEL=$LOG_LEVEL < "$PIPE_PATH" &> $LOG_DIR/client_$i.log &
+        eval CLIENT_${i}_PID=$!
+        # shellcheck disable=SC2181
+        if [ $? -ne 0 ]; then
+            echo "Failed to start client $i."
             exit 1
-        else
-            echo "FIFO $TMP_DIR/blockchain_client_fifo_$i exists."
         fi
     done
 
-    # Send input to the client process through the named pipe
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
-    done
-    # Send input to the client process through the named pipe
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
-    done
-    # Send input to the client process through the named pipe
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
-    done
-    # Send input to the client process through the named pipe
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
-    done
-    # Send input to the client process through the named pipe
-    for ((i=0; i<NUM_CLIENTS; i++)); do
+    # Wait for servers to become Byzantine
+    printf "Sleeping for more %d seconds to wait for servers to become byzantine...\n" "$SLEEP_TIME"
+    sleep "$SLEEP_TIME"
+
+    for ((i=1; i<NUM_CLIENTS; i++)); do # Skip client0
         echo "send -amount $i -toid 0" > "$TMP_DIR/blockchain_client_fifo_$i"
     done
 
     # Wait for the system to process the input again but now it should fail
     printf "Sleeping for %d seconds to allow the system to process the input...\n" "$SLEEP_TIME"
     sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
-    sleep "$SLEEP_TIME"
 
     for ((i=0; i<NUM_BYZANTINE; i++)); do
-        if ! grep -q "Now, I am byzantine and I will send wrong write sets" $LOG_DIR/client_$i.log; then
+        if ! grep -q "Now, I am byzantine and I will send wrong write sets" $LOG_DIR/server_byzantine_$i.log; then
             printf "\e[31m[FAILED] TEST%d: Expected log entry not found in server_byzantine_%d.log.\e[0m\n" "$TN" "$i"
             ALL_PASSED=false
         fi
     done
 
-    for ((i=0; i<NUM_CLIENTS; i++)); do
-        # Count occurrences of "Status: Success" in the log file
-        match_count=$(grep -c "Status: Success" "$LOG_DIR/client_$i.log")
-
-        # Check if the match count is exactly 1
-        if [ "$match_count" -ne 1 ]; then
-            printf "\e[31m[FAILED] TEST%d: Expected exactly one match for 'Status: Success' in client_%d.log (found %d matches).\e[0m\n" "$TN" "$i" "$match_count"
+    for ((i=1; i<NUM_CLIENTS; i++)); do # Skip client0
+        if grep -q "Status: Success" $LOG_DIR/client_$i.log; then
+            printf "\e[31m[FAILED] TEST%d: Not expected log entry found in client_%d.log.\e[0m\n" "$TN" "$i"
             ALL_PASSED=false
         fi
     done
 
     if [ "$ALL_PASSED" = true ]; then
-        printf "\e[32m[PASSED] TEST%d: Expected log entry found in all client logs.\e[0m\n" "$TN"
+        printf "\e[32m[PASSED] TEST%d: Expected log entries found in all process logs.\e[0m\n" "$TN"
     fi
 fi
 

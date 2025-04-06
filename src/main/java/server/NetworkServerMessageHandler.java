@@ -115,6 +115,7 @@ public class NetworkServerMessageHandler implements MessageHandler {
                 firstTime = sender.addReceivedMessage(message.getId(), message);
                 if (firstTime) networkManager.createOneWaySession(message, sender);
                 if (sender.getSendSessionKey() != null) { // guarantee that session key is updated
+                    logger.debug("KEY SET FOR COMMUNICATION WITH SERVER{}", sender.getId());
                     networkManager.acknowledgeMessage(message, sender);
                 }
                 break;

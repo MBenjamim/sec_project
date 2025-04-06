@@ -8,6 +8,7 @@ TEST_DIR="./tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"
 LOG_DIR="$TEST_DIR/logs"
 TMP_DIR="/tmp"
+INIT_WAIT=20
 
 # shellcheck disable=SC1090
 source $CONFIG_FILE
@@ -90,7 +91,6 @@ for ((i=0; i<$((NUM_SERVERS-NUM_BYZANTINE_SERVERS)); i++)); do
         echo "Failed to start server $i."
         exit 1
     fi
-    sleep 1
 done
 
 # Start Byzantine servers
@@ -128,7 +128,7 @@ for ((i=0; i<NUM_BYZANTINE_CLIENTS; i++)); do
     fi
 done
 
-sleep 5
+sleep $INIT_WAIT
 
 # Client 0 authorizes client 1(byzantine) to send tokens on his behalf
 for ((i=0; i<NUM_REGULAR_CLIENTS; i++)); do

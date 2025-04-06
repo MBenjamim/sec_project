@@ -6,7 +6,6 @@ import main.java.blockchain.TransactionResponse;
 import main.java.blockchain.TransactionType;
 import main.java.common.*;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -114,6 +113,10 @@ public class BlockchainClient {
                 processInput(input);
             } catch (NoSuchElementException e) {
                 // This exception is thrown when testing because there is no terminal
+                logger.error("Cannot read from pipes from now on: {}", e.getMessage());
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e1) {}
             } catch (Exception e) {
                 logger.error("Error reading input: {}", e.getMessage());
             }

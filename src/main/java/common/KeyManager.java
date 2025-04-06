@@ -42,6 +42,10 @@ public class KeyManager {
         }
     }
 
+    public int getId() {
+        return id;
+    }
+
     /**
      * Authenticates a message using the secret key defined for session;
      * or Signs a message using the private key.
@@ -61,6 +65,7 @@ public class KeyManager {
         if (MessageType.CONNECT.equals(message.getType())) { // only CONNECT messages are signed
             authentication = RSAAuthenticator.signMessage(privateKey, this.id, receiverId, messageBytes);
         } else {
+            if (node.getSendSessionKey() == null) return null;
             authentication = AESAuthenticator.generateHmac(node.getSendSessionKey(), this.id, receiverId, messageBytes);
         }
 

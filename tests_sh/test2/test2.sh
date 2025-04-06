@@ -7,7 +7,7 @@ TEST_DIR="./tests_sh/test${TN}"
 CONFIG_FILE="$TEST_DIR/test${TN}_config.cfg"
 LOG_DIR="$TEST_DIR/logs"
 TMP_DIR="/tmp"
-
+INIT_WAIT=20
 
 # shellcheck disable=SC1090
 source $CONFIG_FILE
@@ -72,7 +72,6 @@ for ((i=0; i<$((NUM_SERVERS-NUM_BYZANTINE)); i++)); do
         echo "Failed to start server $i."
         exit 1
     fi
-    sleep 1
 done
 
 # Start Byzantine servers
@@ -97,7 +96,7 @@ for ((i=0; i<NUM_CLIENTS; i++)); do
     fi
 done
 
-sleep 5
+sleep $INIT_WAIT
 
 # Send input to the client process through the named pipe
 for ((i=0; i<NUM_CLIENTS; i++)); do
