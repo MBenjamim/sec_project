@@ -180,7 +180,7 @@ public class Block {
             logger.info(
                     "{}\t{}\t{}\t{}",
                     account.getAddress().toHexString(),
-                    account.getBalance().toLong(),
+                    DataUtils.convertAmountToBigDecimalString(account.getBalance()),
                     (account.getCode().equals(Bytes.fromHexString(""))) ? "EOA account" : "Contract acc.",
                     result.getResult()
             );

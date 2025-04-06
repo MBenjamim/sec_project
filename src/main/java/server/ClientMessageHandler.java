@@ -44,7 +44,7 @@ public class ClientMessageHandler implements MessageHandler {
 
     @Override
     public void handleMessage(Message message, NodeRegistry sender) {
-        logger.info("Processing message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
+        logger.info("Handling message: {id:{}, type:{}, sender:{}{}}", message.getId(), message.getType(), sender.getType(), sender.getId());
         boolean firstTime;
         switch (message.getType()) {
             case ACK:

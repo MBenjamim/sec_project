@@ -50,7 +50,11 @@ public class NetworkServerMessageHandler implements MessageHandler {
 
     @Override
     public void handleMessage(Message message, NodeRegistry sender) {
-        logger.info("Handling message: {id:{}, content:\"{}\", type:{}, sender:{}{}}", message.getId(), message.getContent(), message.getType(), sender.getType(), sender.getId());
+        String messageToLog = "Handling message: {id: " + message.getId() + ", type: " + message.getType()
+                + ", sender: " + sender.getType() + sender.getId()
+                + (message.getConsensusIdx() == null ? "" : ", consensus_index: " + message.getConsensusIdx())
+                + (message.getEpochTS() == null ? "" : ", epoch_timestamp: " + message.getEpochTS()) + "}";
+        logger.info(messageToLog);
 
         switch (this.behavior){
             case CORRECT:

@@ -15,6 +15,7 @@ import main.java.utils.Behavior;
 import main.java.utils.DataUtils;
 import org.apache.commons.cli.*;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Wei;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,7 +130,7 @@ public class BlockchainClient {
 
         if (input.startsWith("send")) {
             try {
-                Transaction transaction = parseSendCommand(input);
+                Transaction transaction = parseSendCommand(input, input.startsWith("send_native"));
 
                 // Create and send a message to each node with different IDs
                 String messageContent = transaction.toJson();
@@ -142,7 +143,7 @@ public class BlockchainClient {
             }
         } else if (input.startsWith("balance")) {
             try {
-                Transaction transaction = parseBalanceCommand(input);
+                Transaction transaction = parseBalanceCommand(input, input.startsWith("balance_native"));
 
                 // Create and send a message to each node with different IDs
                 String messageContent = transaction.toJson();
@@ -189,7 +190,7 @@ public class BlockchainClient {
             }
         } else if (input.startsWith("total_supply")) {
             try {
-                Transaction transaction = parseTotalSupplyCommand(input);
+                Transaction transaction = parseTotalSupplyCommand();
 
                 // Create and send a message to each node with different IDs
                 String messageContent = transaction.toJson();
@@ -259,7 +260,7 @@ public class BlockchainClient {
         }
     }
 
-    private Transaction parseSendCommand(String input) throws ParseException {
+    private Transaction parseSendCommand(String input, boolean isNative) throws ParseException {
         String[] args = input.split("\\s+");
 
         Options options = new Options();
@@ -272,13 +273,6 @@ public class BlockchainClient {
 
         if (!cmd.hasOption("amount") || (!cmd.hasOption("toid") && !cmd.hasOption("to"))) {
             throw new IllegalArgumentException("Invalid command format. Expected: send -amount <value> -toid <clientID> or -to <address>");
-        }
-
-        double amount;
-        try {
-            amount = Double.parseDouble(cmd.getOptionValue("amount"));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Amount must be a number.");
         }
 
         Address receiverAddress = null;
@@ -305,9 +299,23 @@ public class BlockchainClient {
 
         long transactionId = networkManager.generateMessageId(); // same as message ID
 
-        String functionSignature = DataUtils.getFunctionSignature("transfer(address,uint256)");
-
-        Transaction transaction =  new Transaction(transactionId, senderAddress, receiverAddress, functionSignature, amount);
+        Transaction transaction;
+        if (isNative) {
+            try {
+                Wei amount = DataUtils.convertAmountToWei(cmd.getOptionValue("amount"));
+                transaction = new Transaction(transactionId, senderAddress, receiverAddress, TransactionType.NATIVE_TRANSFER, amount);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Amount must be a number.");
+            }
+        } else {
+            try {
+                double amount = Double.parseDouble(cmd.getOptionValue("amount"));
+                String functionSignature = DataUtils.getFunctionSignature("transfer(address,uint256)");
+                transaction = new Transaction(transactionId, senderAddress, receiverAddress, functionSignature, amount);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Amount must be a number.");
+            }
+        }
 
         // sign the transaction
         try {
@@ -319,7 +327,7 @@ public class BlockchainClient {
         return transaction;
     }
 
-    private Transaction parseBalanceCommand(String input) throws ParseException {
+    private Transaction parseBalanceCommand(String input, boolean isNative) throws ParseException {
         String[] args = input.split("\\s+");
 
         Options options = new Options();
@@ -357,9 +365,13 @@ public class BlockchainClient {
 
         long transactionId = networkManager.generateMessageId(); // same as message ID
 
-        String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
-
-        Transaction transaction = new Transaction(transactionId, senderAddress, address, functionSignature, null);
+        Transaction transaction;
+        if (isNative) {
+            transaction = new Transaction(transactionId, senderAddress, address, TransactionType.NATIVE_BALANCE, null);
+        } else {
+            String functionSignature = DataUtils.getFunctionSignature("balanceOf(address)");
+            transaction = new Transaction(transactionId, senderAddress, address, functionSignature, null);
+        }
 
         // sign the transaction
         try {
@@ -513,7 +525,7 @@ public class BlockchainClient {
         return transaction;
     }
 
-    private Transaction parseTotalSupplyCommand(String input) throws ParseException {
+    private Transaction parseTotalSupplyCommand() throws ParseException {
         Address senderAddress = networkClients.get(this.id).getAddress();
         long transactionId = networkManager.generateMessageId(); // same as message ID
         String functionSignature = DataUtils.getFunctionSignature("totalSupply()");
@@ -812,24 +824,28 @@ public class BlockchainClient {
         System.out.println("        1. To exit the application, type 'exit'.");
         System.out.println("        2. To get list of commands, enter the command:");
         System.out.println("           help");
-        System.out.println("        3. To perform a transfer, enter the command:");
+        System.out.println("        3. To perform a token transfer (ISTCoin), enter the command:");
         System.out.println("           send -amount <value> [-toid <clientID>, -to <address>]");
-        System.out.println("        4. To check balance, enter the command:");
+        System.out.println("        4. To check balance (ISTCoin), enter the command:");
         System.out.println("           balance [-ofid <clientID>, -of <address>]");
-        System.out.println("        5. To approve a spender, enter the command:");
+        System.out.println("        5. To approve a spender (ISTCoin), enter the command:");
         System.out.println("           approve -amount <value> [-id <clientID>, -address <address>]");
-        System.out.println("        6. To transfer from a client to another, enter the command:");
+        System.out.println("        6. To transfer (ISTCoin) from a client to another, enter the command:");
         System.out.println("           transfer_from -amount <value> [-fromid <clientID>, -from <address>] [-toid <clientID>, -to <address>]");
-        System.out.println("        7. To get the total supply, enter the command:");
+        System.out.println("        7. To get the total supply (ISTCoin), enter the command:");
         System.out.println("           total_supply");
-        System.out.println("        8. To check allowance, enter the command:");
+        System.out.println("        8. To check allowance (ISTCoin), enter the command:");
         System.out.println("           allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
         System.out.println("        9. To check if blacklisted, enter the command:");
         System.out.println("           is_blacklisted [-id <clientID>, -address <address>]");
+        System.out.println("        10. To perform a native currency transfer (DepCoin), enter the command:");
+        System.out.println("           send_native -amount <value> [-toid <clientID>, -to <address>]");
+        System.out.println("        11. To check native currency balance (DepCoin), enter the command:");
+        System.out.println("           balance_native [-ofid <clientID>, -of <address>]");
         if (this.id == 0) {
-            System.out.println("        10. To add to blacklist, enter the command:");
+            System.out.println("        12. To add to blacklist, enter the command:");
             System.out.println("           add_to_blacklist [-id <clientID>, -address <address>]");
-            System.out.println("        11. To remove from blacklist, enter the command:");
+            System.out.println("        13. To remove from blacklist, enter the command:");
             System.out.println("           remove_from_blacklist [-id <clientID>, -address <address>]");
         }
         System.out.println("=============================================================");
@@ -847,6 +863,8 @@ public class BlockchainClient {
         System.out.println("  total_supply");
         System.out.println("  allow [-ownerid <clientID>, -owner <address>] [-spenderid <clientID>, -spender <address>]");
         System.out.println("  is_blacklisted [-id <clientID>, -address <address>]");
+        System.out.println("  send_native -amount <value> [-toid <clientID>, -to <address>]");
+        System.out.println("  balance_native [-ofid <clientID>, -of <address>]");
         if (this.id == 0) {
             System.out.println("  add_to_blacklist [-id <clientID>, -address <address>]");
             System.out.println("  remove_from_blacklist [-id <clientID>, -address <address>]");

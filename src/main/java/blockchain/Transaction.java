@@ -8,10 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import main.java.common.KeyManager;
 import main.java.common.NodeRegistry;
+import main.java.utils.DataUtils;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Wei;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.Objects;
 
@@ -24,9 +27,13 @@ public class Transaction {
     private static final Logger logger = LoggerFactory.getLogger(Transaction.class);
 
     private long transactionId;
-    private String functionSignature; // function signature of the transaction to be
     @JsonIgnore
     private Address senderAddress;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String functionSignature = null; // function signature of the transaction to be executed
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private TransactionType nativeOperation = null; // transaction to be executed outside smart contracts
 
     // argument fields (optional depending on the function to call)
     @JsonIgnore
@@ -35,6 +42,8 @@ public class Transaction {
     private Address receiverAddress = null;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Double amount = null;
+    @JsonIgnore
+    private Wei weiAmount = null;
 
     @JsonIgnore
     @ToString.Exclude
@@ -49,12 +58,16 @@ public class Transaction {
     }
 
     public Transaction(long transactionId, Address senderAddress, Address fromAddress, Address toAddress, String functionSignature, Double amount) {
+        this(transactionId, senderAddress, toAddress, functionSignature, amount);
+        this.ownerAddress = fromAddress;
+    }
+
+    public Transaction(long transactionId, Address senderAddress, Address receiverAddress, TransactionType type, Wei amount) {
         this.transactionId = transactionId;
         this.senderAddress = senderAddress;
-        this.ownerAddress = fromAddress;
-        this.receiverAddress = toAddress;
-        this.functionSignature = functionSignature;
-        this.amount = amount;
+        this.receiverAddress = receiverAddress;
+        this.nativeOperation = type;
+        this.weiAmount = amount;
     }
 
     @Override
@@ -144,7 +157,7 @@ public class Transaction {
         }
 
         // verify if function to be called exists
-        TransactionType type = blockchain.getTransactionType(functionSignature);
+        TransactionType type = (functionSignature == null) ? nativeOperation : blockchain.getTransactionType(functionSignature);
         if (type == null) return false;
 
         // verify if arguments of the function are correct
@@ -155,9 +168,15 @@ public class Transaction {
             case BALANCE_OF:
                 if (!hasOneAddress() || amount != null) return false;
                 break;
+            case NATIVE_BALANCE:
+                if (!hasOneAddress() || weiAmount != null) return false;
+                break;
             case APPROVE:
             case TRANSFER:
                 if (!hasOneAddress() || amount == null) return false;
+                break;
+            case NATIVE_TRANSFER:
+                if (!hasOneAddress() || weiAmount == null) return false;
                 break;
             case ALLOWANCE:
                 if (!hasTwoAddresses() || amount != null) return false;
@@ -168,6 +187,9 @@ public class Transaction {
             case TOTAL_SUPPLY:
                 if (!hasNoAddress() || amount != null) return false;
                 break;
+            default:
+                logger.error("Unknown transaction type: {}", type);
+                return false;
         }
 
         return true;
@@ -205,6 +227,17 @@ public class Transaction {
         this.ownerAddress = (address == null) ? null : Address.fromHexString(address);
     }
 
+    @JsonProperty("weiAmount")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getBalanceJson() {
+        return (weiAmount == null) ? null : DataUtils.convertAmountToBigDecimalString(weiAmount);
+    }
+
+    @JsonProperty("weiAmount")
+    public void setBalanceJson(String amount) {
+        this.weiAmount = (amount == null) ? null : DataUtils.convertAmountToWei(amount);
+    }
+
     /**
      * Retrieves the properties of the transaction to be signed.
      *
@@ -213,7 +246,8 @@ public class Transaction {
     @JsonIgnore
     public byte[] getPropertiesToSign() {
         try {
-            String propertiesString = transactionId + "," + functionSignature;
+            String propertiesString = transactionId + ",";
+            propertiesString += (functionSignature == null ? nativeOperation : functionSignature);
             propertiesString += (ownerAddress == null) ? "" : "," + ownerAddress.toHexString();
             propertiesString += (receiverAddress == null) ? "" : "," + receiverAddress.toHexString();
             propertiesString += (amount == null) ? "" : "," + amount;
