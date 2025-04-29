@@ -58,12 +58,15 @@ public class BlockchainConfirmationCollector {
     private TransactionResponse condition() {
         int requiredCount = F + 1;
         if (collectedValues.size() < requiredCount) return null;
-        int count = 0;
+
         for (int i = 0; i < N; i++) {
             String value = collectedValues.get(i);
             if (value == null || value.isBlank()) continue;
 
-            if (++count == requiredCount) { // enough good results & reset to wait again
+            int matches = (int) collectedValues.values().stream()
+                    .filter(v -> v.equals(value)).count();
+
+            if (matches >= requiredCount) { // enough good results & reset to wait again
                 TransactionResponse response = TransactionResponse.fromJson(value);
                 collectedValues = new HashMap<>();
                 collectedConfirmations.add(response.getSignatureBase64());

@@ -13,7 +13,6 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 

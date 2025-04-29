@@ -6,6 +6,7 @@ import java.security.PrivateKey;
 import java.security.SignatureException;
 import java.util.Base64;
 
+import lombok.Getter;
 import main.java.blockchain.Transaction;
 import main.java.consensus.State;
 import main.java.crypto_utils.*;
@@ -23,6 +24,7 @@ import javax.crypto.SecretKey;
 public class KeyManager {
     private static final Logger logger = LoggerFactory.getLogger(KeyManager.class);
 
+    @Getter
     private final int id;
     private PrivateKey privateKey;
 
@@ -40,10 +42,6 @@ public class KeyManager {
         } catch (Exception e) {
             logger.error("Failed to read key files", e);
         }
-    }
-
-    public int getId() {
-        return id;
     }
 
     /**

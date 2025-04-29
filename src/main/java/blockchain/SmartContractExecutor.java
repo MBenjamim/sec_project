@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 

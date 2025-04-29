@@ -33,7 +33,7 @@ public class ConfigLoader {
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
             config.load(fis);
         } catch (IOException e) {
-            logger.error("Failed to load" + CONFIG_FILE + "configuration file", e);
+            logger.error("Failed to load {} configuration file", CONFIG_FILE, e);
         }
     }
 

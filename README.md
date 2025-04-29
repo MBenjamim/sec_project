@@ -51,10 +51,10 @@ LEADER_ID=0
 ./check_config_and_compile.sh
 ```
 
-2. **Generate RSA Keys**\
-   Run the `generate_keys.sh` script to generate RSA key pairs for each server and distribute the public keys:
+2. **Initialize System**\
+   Run the `init_system.sh` script to generate RSA key pairs for each server and distribute the public keys, and initialize the Genesis block containing block zero:
 ```shell
-./generate_keys.sh
+./init_system.sh
 ```
 
 3. **Run the Servers**\
